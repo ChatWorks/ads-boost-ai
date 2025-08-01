@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${req.headers.get('origin') || 'http://localhost:3000'}/integrations?error=${encodeURIComponent(error)}`
+          'Location': `https://preview--ads-boost-ai.lovable.app/integrations?error=${encodeURIComponent(error)}`
         }
       });
     }
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
     console.log('Successfully stored Google Ads accounts for user:', state);
 
     // Redirect back to frontend
-    const frontendUrl = req.headers.get('referer')?.split('/integrations')[0] || 'http://localhost:3000';
+    const frontendUrl = 'https://preview--ads-boost-ai.lovable.app';
     return new Response(null, {
       status: 302,
       headers: {
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error in google-ads-callback:', error);
-    const frontendUrl = req.headers.get('referer')?.split('/integrations')[0] || 'http://localhost:3000';
+    const frontendUrl = 'https://preview--ads-boost-ai.lovable.app';
     return new Response(null, {
       status: 302,
       headers: {
