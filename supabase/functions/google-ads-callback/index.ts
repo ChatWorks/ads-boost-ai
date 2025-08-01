@@ -254,8 +254,12 @@ Deno.serve(async (req) => {
               refresh_token: encryptedRefreshToken,
               is_active: true,
               connection_status: 'CONNECTED',
-              developer_token_status: 'APPROVED', // Since it worked
+              developer_token_status: 'APPROVED',
               last_connection_test: new Date().toISOString(),
+              needs_reconnection: false, // Fresh connection
+              last_error_message: null,
+              last_error_at: null,
+              token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString() // 1 hour from now
             }, {
               onConflict: 'user_id,customer_id'
             });
@@ -267,7 +271,8 @@ Deno.serve(async (req) => {
           }
         } catch (dbError) {
           console.error('❌ Database error for customer', customerDetail.customer_id, ':', dbError);
-        }      }
+        }
+      }
       
       console.log('✅ Successfully stored', customerDetails.length, 'Google Ads accounts');
     } else {
