@@ -104,65 +104,29 @@ Deno.serve(async (req) => {
       throw new Error('No refresh token received');
     }
 
-    // Get accessible customers using Google Ads API
-    console.log('🔍 Getting accessible customers...');
-    const customersResponse = await fetch('https://googleads.googleapis.com/v16/customers:listAccessibleCustomers', {
-      headers: {
-        'Authorization': `Bearer ${tokens.access_token}`,
-        'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN') ?? '',
-      },
-    });
-
-    console.log('📊 Customers response status:', customersResponse.status);
-    
-    if (!customersResponse.ok) {
-      const errorText = await customersResponse.text();
-      console.error('❌ Google Ads API failed:', errorText);
-      throw new Error(`Google Ads API failed: ${customersResponse.status} - ${errorText}`);
-    }
-
-    const customersData = await customersResponse.json();
-    console.log('✅ Accessible customers response:', customersData);
-
     // Encrypt refresh token
     const encryptedRefreshToken = await encrypt(tokens.refresh_token, Deno.env.get('ENCRYPTION_KEY') ?? '');
 
-    // Store accounts in database
-    if (customersData.resourceNames) {
-      for (const resourceName of customersData.resourceNames) {
-        const customerId = resourceName.split('/')[1];
-        
-        // Get customer details
-        const customerResponse = await fetch(`https://googleads.googleapis.com/v16/customers/${customerId}`, {
-          headers: {
-            'Authorization': `Bearer ${tokens.access_token}`,
-            'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN') ?? '',
-          },
-        });
+    // For now, skip Google Ads API calls and just store the OAuth connection
+    // TODO: Add Google Ads API calls after developer token is properly configured
+    console.log('✅ Skipping Google Ads API calls for now, storing OAuth tokens only');
 
-        let customerData: any = {};
-        if (customerResponse.ok) {
-          customerData = await customerResponse.json();
-        }
+    // Store a basic account record with the refresh token
+    await supabaseClient
+      .from('google_ads_accounts')
+      .upsert({
+        user_id: state,
+        customer_id: 'pending_setup', // Temporary placeholder
+        account_name: 'Google Ads Account (Setup Required)',
+        currency_code: null,
+        time_zone: null,
+        refresh_token: encryptedRefreshToken,
+        is_active: false, // Mark as inactive until proper setup
+      }, {
+        onConflict: 'user_id,customer_id'
+      });
 
-        // Insert or update Google Ads account
-        await supabaseClient
-          .from('google_ads_accounts')
-          .upsert({
-            user_id: state,
-            customer_id: customerId,
-            account_name: customerData.descriptiveName || `Account ${customerId}`,
-            currency_code: customerData.currencyCode,
-            time_zone: customerData.timeZone,
-            refresh_token: encryptedRefreshToken,
-            is_active: true,
-          }, {
-            onConflict: 'user_id,customer_id'
-          });
-      }
-    }
-
-    console.log('Successfully stored Google Ads accounts for user:', state);
+    console.log('✅ Successfully stored OAuth tokens for user:', state);
 
     // Redirect back to frontend
     const frontendUrl = 'https://preview--ads-boost-ai.lovable.app';
