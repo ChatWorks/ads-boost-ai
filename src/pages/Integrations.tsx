@@ -35,22 +35,32 @@ export default function Integrations() {
   }, [searchParams, setSearchParams]);
 
   const handleConnectGoogleAds = async () => {
+    console.log('🚀 Starting Google Ads connection...');
     setIsConnecting(true);
+    
     try {
+      console.log('📡 Calling supabase function: google-ads-connect');
       const { data, error } = await supabase.functions.invoke('google-ads-connect');
+      
+      console.log('📊 Function response:', { data, error });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Function error:', error);
+        throw error;
+      }
 
       if (data?.authUrl) {
+        console.log('✅ Got auth URL, redirecting to:', data.authUrl);
         window.location.href = data.authUrl;
       } else {
+        console.error('❌ No authUrl in response:', data);
         throw new Error('No authorization URL received');
       }
     } catch (error) {
-      console.error('Error connecting Google Ads:', error);
+      console.error('💥 Error connecting Google Ads:', error);
       toast({
         title: "Connection Error",
-        description: "Failed to initiate Google Ads connection. Please try again.",
+        description: `Failed to connect: ${error.message}`,
         variant: "destructive",
       });
       setIsConnecting(false);
