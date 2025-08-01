@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
     );
 
     // Exchange code for tokens
+    console.log('🔄 Exchanging code for tokens...');
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -80,7 +81,16 @@ Deno.serve(async (req) => {
       }),
     });
 
+    console.log('📊 Token response status:', tokenResponse.status);
+    
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('❌ Token exchange failed:', errorText);
+      throw new Error(`Token exchange failed: ${tokenResponse.status} - ${errorText}`);
+    }
+
     const tokens = await tokenResponse.json();
+    console.log('✅ Tokens received, has refresh_token:', !!tokens.refresh_token);
     
     if (!tokens.refresh_token) {
       throw new Error('No refresh token received');
