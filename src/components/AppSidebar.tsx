@@ -23,7 +23,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Integrations", url: "/integrations", icon: Zap },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Analytics", url: "/campaigns", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

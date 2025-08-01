@@ -85,8 +85,9 @@ Deno.serve(async (req) => {
   try {
     console.log('🚀 get-campaigns function called');
     
-    const { accountId } = await req.json();
+    const { accountId, filters } = await req.json();
     console.log('📝 Account ID:', accountId);
+    console.log('📝 Filters:', JSON.stringify(filters, null, 2));
     
     if (!accountId) throw new Error('Account ID is required');
 
@@ -128,23 +129,59 @@ Deno.serve(async (req) => {
     const accessToken = tokenResponse.access_token;
     console.log('✅ Got fresh access token');
 
+    // Build dynamic query based on filters
+    const selectedMetrics = filters?.metrics || ['impressions', 'clicks', 'cost_micros', 'ctr', 'conversions'];
+    const metricsQuery = selectedMetrics.map(metric => `metrics.${metric}`).join(', ');
+    
+    // Build date condition
+    let dateCondition = 'segments.date DURING LAST_30_DAYS';
+    if (filters?.dateRange) {
+      switch (filters.dateRange) {
+        case 'LAST_7_DAYS':
+          dateCondition = 'segments.date DURING LAST_7_DAYS';
+          break;
+        case 'LAST_14_DAYS':
+          dateCondition = 'segments.date DURING LAST_14_DAYS';
+          break;
+        case 'LAST_90_DAYS':
+          dateCondition = 'segments.date DURING LAST_90_DAYS';
+          break;
+        case 'CUSTOM':
+          if (filters.startDate && filters.endDate) {
+            const startDate = new Date(filters.startDate).toISOString().split('T')[0].replace(/-/g, '');
+            const endDate = new Date(filters.endDate).toISOString().split('T')[0].replace(/-/g, '');
+            dateCondition = `segments.date BETWEEN '${startDate}' AND '${endDate}'`;
+          }
+          break;
+        default:
+          dateCondition = 'segments.date DURING LAST_30_DAYS';
+      }
+    }
+
+    // Build status condition
+    const allowedStatuses = filters?.campaignStatus || ['ENABLED'];
+    let statusCondition = allowedStatuses.map(status => `'${status}'`).join(', ');
+    if (!allowedStatuses.includes('REMOVED')) {
+      statusCondition = `campaign.status IN (${statusCondition})`;
+    } else {
+      statusCondition = `campaign.status IN (${statusCondition})`;
+    }
+
+    const limit = filters?.limit || 50;
+
     const query = `
       SELECT 
         campaign.id, 
         campaign.name, 
         campaign.status,
-        metrics.impressions, 
-        metrics.clicks, 
-        metrics.cost_micros, 
-        metrics.ctr, 
-        metrics.average_cpc, 
-        metrics.conversions, 
-        metrics.cost_per_conversion
+        ${metricsQuery}
       FROM campaign 
-      WHERE segments.date DURING LAST_30_DAYS
-      AND campaign.status != 'REMOVED'
+      WHERE ${dateCondition}
+      AND ${statusCondition}
       ORDER BY metrics.impressions DESC
-      LIMIT 50`;
+      LIMIT ${limit}`;
+
+    console.log('📊 Generated query:', query);
 
     const makeApiCall = async (token: string) => {
       const customerId = account.customer_id.replace(/-/g, '');
