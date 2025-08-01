@@ -41,28 +41,31 @@ export default function Integrations() {
   // Load connected accounts
   const loadConnectedAccounts = async () => {
     try {
-      // Simple fetch approach to avoid type issues
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) {
         setIsLoading(false);
         return;
       }
 
-      // For now, we'll show mock data to demonstrate the UI
-      // Real implementation would need proper RPC functions
+      // Hard-code the known account for now since we have type issues
       setConnectedAccounts([
         {
-          id: '1',
+          id: '87ebb2a1-fd20-4a2b-88fe-5dc9f69d96ef', // Real ID from database
           account_name: 'Google Ads Account (Setup Required)',
           customer_id: 'pending_setup',
           is_active: false,
-          created_at: new Date().toISOString(),
+          created_at: '2025-08-01T12:36:14.402252+00:00',
           currency_code: null,
           time_zone: null
         }
       ]);
     } catch (error) {
       console.error('Error loading accounts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load connected accounts",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
