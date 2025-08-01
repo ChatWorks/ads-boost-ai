@@ -105,6 +105,7 @@ Deno.serve(async (req) => {
     }
 
     // Get accessible customers using Google Ads API
+    console.log('🔍 Getting accessible customers...');
     const customersResponse = await fetch('https://googleads.googleapis.com/v16/customers:listAccessibleCustomers', {
       headers: {
         'Authorization': `Bearer ${tokens.access_token}`,
@@ -112,8 +113,16 @@ Deno.serve(async (req) => {
       },
     });
 
+    console.log('📊 Customers response status:', customersResponse.status);
+    
+    if (!customersResponse.ok) {
+      const errorText = await customersResponse.text();
+      console.error('❌ Google Ads API failed:', errorText);
+      throw new Error(`Google Ads API failed: ${customersResponse.status} - ${errorText}`);
+    }
+
     const customersData = await customersResponse.json();
-    console.log('Accessible customers:', customersData);
+    console.log('✅ Accessible customers response:', customersData);
 
     // Encrypt refresh token
     const encryptedRefreshToken = await encrypt(tokens.refresh_token, Deno.env.get('ENCRYPTION_KEY') ?? '');
