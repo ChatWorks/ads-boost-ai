@@ -122,6 +122,27 @@ export default function GoogleAdsAccountSelection({ onSelectionComplete }: Googl
     }
   };
 
+  const handleReconnect = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('google-ads-connect');
+      
+      if (error) throw error;
+      
+      if (data?.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('No authorization URL received');
+      }
+    } catch (error) {
+      console.error('Error initiating reconnection:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start reconnection process",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -158,16 +179,17 @@ export default function GoogleAdsAccountSelection({ onSelectionComplete }: Googl
           <Card key={account.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 flex-1">
                   <Checkbox
                     id={account.id}
                     checked={selectedAccounts.has(account.id)}
                     onCheckedChange={() => handleAccountToggle(account.id)}
+                    disabled={account.needs_reconnection}
                   />
                   
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-1">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center space-x-2">
                         <label 
                           htmlFor={account.id}
@@ -207,6 +229,17 @@ export default function GoogleAdsAccountSelection({ onSelectionComplete }: Googl
                     </div>
                   </div>
                 </div>
+                
+                {account.needs_reconnection && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReconnect}
+                    className="ml-4"
+                  >
+                    Reconnect
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
