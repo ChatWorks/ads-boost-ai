@@ -7,21 +7,9 @@ import { Zap, CheckCircle, AlertTriangle, ExternalLink, RefreshCw } from 'lucide
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
-interface GoogleAdsAccount {
-  id: string;
-  customer_id: string;
-  account_name: string;
-  currency_code: string;
-  time_zone: string;
-  is_active: boolean;
-  created_at: string;
-}
-
 export default function Integrations() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isConnecting, setIsConnecting] = useState(false);
-  const [accounts, setAccounts] = useState<GoogleAdsAccount[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // Handle OAuth callback
   useEffect(() => {
@@ -34,7 +22,6 @@ export default function Integrations() {
         description: "Successfully connected your Google Ads account.",
       });
       setSearchParams({});
-      loadAccounts();
     }
 
     if (error) {
@@ -46,32 +33,6 @@ export default function Integrations() {
       setSearchParams({});
     }
   }, [searchParams, setSearchParams]);
-
-  const loadAccounts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('google_ads_accounts')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setAccounts(data || []);
-    } catch (error) {
-      console.error('Error loading accounts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load Google Ads accounts.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadAccounts();
-  }, []);
 
   const handleConnectGoogleAds = async () => {
     setIsConnecting(true);
@@ -93,31 +54,6 @@ export default function Integrations() {
         variant: "destructive",
       });
       setIsConnecting(false);
-    }
-  };
-
-  const handleDisconnectAccount = async (accountId: string) => {
-    try {
-      const { error } = await supabase
-        .from('google_ads_accounts')
-        .update({ is_active: false })
-        .eq('id', accountId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Account Disconnected",
-        description: "Google Ads account has been disconnected.",
-      });
-
-      loadAccounts();
-    } catch (error) {
-      console.error('Error disconnecting account:', error);
-      toast({
-        title: "Error",
-        description: "Failed to disconnect account.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -157,97 +93,67 @@ export default function Integrations() {
         </CardHeader>
       </Card>
 
-      {/* Connected Accounts */}
+      {/* Google Cloud Console Configuration Instructions */}
       <Card className="professional-card">
         <CardHeader>
-          <CardTitle>Connected Accounts</CardTitle>
+          <CardTitle>Google Cloud Console Configuration</CardTitle>
           <CardDescription>
-            Manage your connected Google Ads accounts and their permissions.
+            Configure your OAuth2 settings in Google Cloud Console exactly as shown below.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+        <CardContent className="space-y-6">
+          <div>
+            <h4 className="font-semibold mb-2">✅ Authorized JavaScript origins:</h4>
+            <div className="bg-muted p-3 rounded-lg font-mono text-sm">
+              http://localhost:3000<br/>
+              https://ijocgytumkinjhmgferk.supabase.co
             </div>
-          ) : accounts.length === 0 ? (
-            <div className="text-center py-8">
-              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Connected Accounts</h3>
-              <p className="text-muted-foreground mb-4">
-                Connect your Google Ads account to start viewing campaign data and AI insights.
-              </p>
-              <Button onClick={handleConnectGoogleAds} disabled={isConnecting}>
-                <Zap className="mr-2 h-4 w-4" />
-                Connect Google Ads Account
-              </Button>
+          </div>
+          
+          <div>
+            <h4 className="font-semibold mb-2">✅ Authorized redirect URIs:</h4>
+            <div className="bg-muted p-3 rounded-lg font-mono text-sm">
+              https://ijocgytumkinjhmgferk.supabase.co/functions/v1/google-ads-callback
             </div>
-          ) : (
-            <div className="space-y-4">
-              {accounts.map((account) => (
-                <div
-                  key={account.id}
-                  className="flex items-center justify-between p-4 border border-border rounded-lg"
-                >
-                  <div className="flex items-start space-x-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <CheckCircle className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">{account.account_name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Customer ID: {account.customer_id}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="secondary">
-                          {account.currency_code || 'USD'}
-                        </Badge>
-                        <Badge variant="outline">
-                          {account.time_zone || 'UTC'}
-                        </Badge>
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          Connected
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm">
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      View in Google Ads
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => handleDisconnectAccount(account.id)}
-                    >
-                      Disconnect
-                    </Button>
-                  </div>
-                </div>
-              ))}
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start space-x-2">
+              <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-blue-900">Belangrijke wijziging nodig!</h4>
+                <p className="text-blue-800 text-sm mt-1">
+                  Vervang in je Google Cloud Console de redirect URI van<br/>
+                  <code className="bg-white px-1 rounded">http://localhost:3000/api/auth/google-ads/callback</code><br/>
+                  naar<br/>
+                  <code className="bg-white px-1 rounded">https://ijocgytumkinjhmgferk.supabase.co/functions/v1/google-ads-callback</code>
+                </p>
+              </div>
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* API Connection Test */}
-      {accounts.length > 0 && (
-        <Card className="professional-card">
-          <CardHeader>
-            <CardTitle>API Connection Test</CardTitle>
-            <CardDescription>
-              Test your Google Ads API connection and verify data access.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Test API Connection
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {/* No Data State */}
+      <Card className="professional-card">
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <Zap className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Ready to Connect</h3>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Update your Google Cloud Console settings and then click the button above to connect your Google Ads account.
+          </p>
+          <Button onClick={handleConnectGoogleAds} disabled={isConnecting}>
+            {isConnecting ? (
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Zap className="mr-2 h-4 w-4" />
+            )}
+            Connect Google Ads Account
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
