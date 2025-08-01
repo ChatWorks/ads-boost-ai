@@ -23,19 +23,39 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    console.log('🚀 get-campaigns function called');
+    
     const { accountId } = await req.json();
+    console.log('📝 Account ID:', accountId);
+    
     if (!accountId) throw new Error('Account ID is required');
 
     const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
+    console.log('🔍 Fetching account from database...');
     const { data: account, error: accountError } = await supabaseAdmin
       .from('google_ads_accounts')
-      .select('customer_id, access_token, refresh_token')
+      .select('customer_id, refresh_token')
       .eq('id', accountId).single();
 
-    if (accountError || !account) throw new Error('Google Ads account not found.');
+    if (accountError) {
+      console.error('❌ Database error:', accountError);
+      throw new Error(`Database error: ${accountError.message}`);
+    }
+    
+    if (!account) {
+      console.error('❌ Account not found');
+      throw new Error('Google Ads account not found.');
+    }
+    
+    console.log('✅ Account found:', account.customer_id);
 
-    let accessToken = await decrypt(account.access_token, Deno.env.get('ENCRYPTION_KEY')!);
+    // Get a fresh access token using the refresh token
+    console.log('🔄 Getting fresh access token...');
+    const refreshToken = await decrypt(account.refresh_token, Deno.env.get('ENCRYPTION_KEY')!);
+    const tokenResponse = await getRefreshedToken(refreshToken);
+    const accessToken = tokenResponse.access_token;
+    console.log('✅ Got fresh access token');
 
     const query = `
       SELECT 
@@ -48,6 +68,8 @@ Deno.serve(async (req) => {
 
     const makeApiCall = async (token: string) => {
       const customerId = account.customer_id.replace(/-/g, '');
+      console.log('📡 Making API call to Google Ads for customer:', customerId);
+      
       return await fetch(`https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${customerId}/googleAds:searchStream`, {
         method: 'POST',
         headers: {
@@ -62,21 +84,26 @@ Deno.serve(async (req) => {
 
     let response = await makeApiCall(accessToken);
 
+    console.log('📊 API Response status:', response.status);
+
     if (response.status === 401) {
-      console.log('Access token expired, refreshing...');
-      const refreshToken = await decrypt(account.refresh_token, Deno.env.get('ENCRYPTION_KEY')!);
+      console.log('🔄 Access token expired, refreshing...');
       const newTokens = await getRefreshedToken(refreshToken);
-      accessToken = newTokens.access_token;
-      response = await makeApiCall(accessToken);
+      const newAccessToken = newTokens.access_token;
+      response = await makeApiCall(newAccessToken);
+      console.log('📊 API Response status after refresh:', response.status);
     }
 
     if (!response.ok) {
-      const errorBody = await response.json();
-      throw new Error(errorBody.error.message || 'Failed to fetch campaigns from Google Ads API.');
+      const errorBody = await response.text();
+      console.error('❌ API Error:', errorBody);
+      throw new Error(`Google Ads API error (${response.status}): ${errorBody}`);
     }
 
     const data = await response.json();
-    const campaigns = data[0]?.results.map((row: any) => ({
+    console.log('✅ Raw API response:', JSON.stringify(data).substring(0, 200) + '...');
+    
+    const campaigns = data[0]?.results?.map((row: any) => ({
       ...row.campaign,
       metrics: {
         ...row.metrics,
@@ -86,10 +113,15 @@ Deno.serve(async (req) => {
       }
     })) || [];
 
+    console.log(`✅ Processed ${campaigns.length} campaigns`);
+
     return new Response(JSON.stringify({ campaigns }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (err) {
+  } catch (err: any) {
+    console.error('💥 Function error:', err.message);
+    console.error('💥 Full error:', err);
+    
     return new Response(JSON.stringify({ error: err.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
