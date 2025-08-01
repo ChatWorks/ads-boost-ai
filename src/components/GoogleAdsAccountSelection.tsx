@@ -17,6 +17,9 @@ interface GoogleAdsAccount {
   is_active: boolean;
   currency_code: string | null;
   time_zone: string | null;
+  needs_reconnection: boolean;
+  last_error_message: string | null;
+  last_error_at: string | null;
 }
 
 interface GoogleAdsAccountSelectionProps {
@@ -181,9 +184,12 @@ export default function GoogleAdsAccountSelection({ onSelectionComplete }: Googl
                             <Badge variant="outline">Test</Badge>
                           )}
                           <Badge 
-                            variant={account.connection_status === 'CONNECTED' ? 'default' : 'destructive'}
+                            variant={
+                              account.needs_reconnection ? 'destructive' :
+                              account.connection_status === 'CONNECTED' ? 'default' : 'secondary'
+                            }
                           >
-                            {account.connection_status}
+                            {account.needs_reconnection ? 'NEEDS RECONNECTION' : account.connection_status}
                           </Badge>
                         </div>
                       </div>
@@ -192,6 +198,11 @@ export default function GoogleAdsAccountSelection({ onSelectionComplete }: Googl
                         Customer ID: {account.customer_id}
                         {account.currency_code && ` • ${account.currency_code}`}
                         {account.time_zone && ` • ${account.time_zone}`}
+                        {account.needs_reconnection && account.last_error_message && (
+                          <div className="text-destructive text-xs mt-1">
+                            Error: {account.last_error_message}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

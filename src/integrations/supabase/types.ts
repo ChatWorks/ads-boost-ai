@@ -27,9 +27,14 @@ export type Database = {
           is_active: boolean | null
           is_manager: boolean | null
           last_connection_test: string | null
+          last_error_at: string | null
+          last_error_message: string | null
+          last_successful_fetch: string | null
           login_customer_id: string | null
+          needs_reconnection: boolean | null
           refresh_token: string
           time_zone: string | null
+          token_expires_at: string | null
           updated_at: string
           user_id: string
         }
@@ -45,9 +50,14 @@ export type Database = {
           is_active?: boolean | null
           is_manager?: boolean | null
           last_connection_test?: string | null
+          last_error_at?: string | null
+          last_error_message?: string | null
+          last_successful_fetch?: string | null
           login_customer_id?: string | null
+          needs_reconnection?: boolean | null
           refresh_token: string
           time_zone?: string | null
+          token_expires_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -63,9 +73,14 @@ export type Database = {
           is_active?: boolean | null
           is_manager?: boolean | null
           last_connection_test?: string | null
+          last_error_at?: string | null
+          last_error_message?: string | null
+          last_successful_fetch?: string | null
           login_customer_id?: string | null
+          needs_reconnection?: boolean | null
           refresh_token?: string
           time_zone?: string | null
+          token_expires_at?: string | null
           updated_at?: string
           user_id?: string
         }

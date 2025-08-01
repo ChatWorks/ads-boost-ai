@@ -17,6 +17,7 @@ interface Campaign {
     average_cpc: number;
     conversions: number;
     cost_per_conversion: number;
+    conversion_rate: number;
   };
 }
 
@@ -48,12 +49,29 @@ export default function CampaignList({ accountId }: CampaignListProps) {
         setCampaigns(data?.campaigns?.slice(0, 5) || []);
       } catch (err: any) {
         console.error('Error fetching campaigns:', err);
-        setError(err.message || 'Failed to fetch campaign data');
-        toast({
-          title: "Error",
-          description: "Failed to fetch campaign data",
-          variant: "destructive",
-        });
+        const errorMessage = err.message || 'Failed to fetch campaign data';
+        setError(errorMessage);
+        
+        // Show different messages based on error type
+        if (errorMessage.includes('reconnection required')) {
+          toast({
+            title: "Reconnection Required",
+            description: "Your Google Ads account needs to be reconnected. Please go to the integrations page.",
+            variant: "destructive",
+          });
+        } else if (errorMessage.includes('Token has been expired')) {
+          toast({
+            title: "Token Expired",
+            description: "Your Google Ads access has expired. Please reconnect your account.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to fetch campaign data",
+            variant: "destructive",
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -169,7 +187,12 @@ export default function CampaignList({ accountId }: CampaignListProps) {
                 <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
                   CTR: {(campaign.metrics.ctr * 100).toFixed(2)}%
                   {campaign.metrics.conversions > 0 && (
-                    <span className="ml-4">Conversions: {formatNumber(campaign.metrics.conversions)}</span>
+                    <>
+                      <span className="ml-4">Conversions: {formatNumber(campaign.metrics.conversions)}</span>
+                      {campaign.metrics.conversion_rate > 0 && (
+                        <span className="ml-4">Conv. Rate: {(campaign.metrics.conversion_rate * 100).toFixed(2)}%</span>
+                      )}
+                    </>
                   )}
                 </div>
               )}

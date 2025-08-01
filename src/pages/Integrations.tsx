@@ -22,6 +22,10 @@ interface GoogleAdsAccount {
   currency_code: string | null;
   time_zone: string | null;
   created_at: string;
+  needs_reconnection: boolean;
+  last_error_message: string | null;
+  last_error_at: string | null;
+  last_successful_fetch: string | null;
 }
 
 export default function Integrations() {
@@ -350,44 +354,82 @@ export default function Integrations() {
             </CardHeader>
             <CardContent className="space-y-4">
               {connectedAccounts.filter(account => account.is_active).map((account) => (
-                <div key={account.id} className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold">{account.account_name || `Account ${account.customer_id}`}</h4>
-                      <div className="flex space-x-1">
-                        {account.is_manager && (
-                          <Badge variant="secondary">Manager</Badge>
+                <div key={account.id} className={`p-4 border rounded-lg ${
+                  account.needs_reconnection 
+                    ? 'bg-destructive/5 border-destructive/20' 
+                    : 'bg-green-50 border-green-200'
+                }`}>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold">{account.account_name || `Account ${account.customer_id}`}</h4>
+                        <div className="flex space-x-1">
+                          {account.is_manager && (
+                            <Badge variant="secondary">Manager</Badge>
+                          )}
+                          {account.account_type === 'TEST' && (
+                            <Badge variant="outline">Test</Badge>
+                          )}
+                          <Badge variant={account.needs_reconnection ? 'destructive' : 'default'}>
+                            {account.needs_reconnection ? 'Needs Reconnection' : 'Active'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <p>Customer ID: {account.customer_id}</p>
+                        {account.currency_code && <p>Currency: {account.currency_code}</p>}
+                        {account.time_zone && <p>Timezone: {account.time_zone}</p>}
+                        <p>Connected: {new Date(account.created_at).toLocaleDateString()}</p>
+                        {account.last_successful_fetch && (
+                          <p>Last data fetch: {new Date(account.last_successful_fetch).toLocaleDateString()}</p>
                         )}
-                        {account.account_type === 'TEST' && (
-                          <Badge variant="outline">Test</Badge>
+                        {account.needs_reconnection && account.last_error_message && (
+                          <div className="text-destructive text-sm mt-2 p-2 bg-destructive/5 rounded">
+                            <strong>Error:</strong> {account.last_error_message}
+                            {account.last_error_at && (
+                              <div className="text-xs mt-1">
+                                Last error: {new Date(account.last_error_at).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
                         )}
-                        <Badge variant="default">Active</Badge>
                       </div>
                     </div>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <p>Customer ID: {account.customer_id}</p>
-                      {account.currency_code && <p>Currency: {account.currency_code}</p>}
-                      {account.time_zone && <p>Timezone: {account.time_zone}</p>}
-                      <p>Connected: {new Date(account.created_at).toLocaleDateString()}</p>
+                    <div className="flex items-center gap-2">
+                      {account.needs_reconnection ? (
+                        <Button
+                          size="sm"
+                          onClick={handleConnectGoogleAds}
+                          disabled={isConnecting}
+                        >
+                          {isConnecting ? (
+                            <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Zap className="mr-1 h-3 w-3" />
+                          )}
+                          Reconnect
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => testConnection(account.id)}
+                          disabled={isTesting}
+                        >
+                          {isTesting ? (
+                            <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <TestTube className="mr-1 h-3 w-3" />
+                          )}
+                          Test
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => testConnection(account.id)}
-                      disabled={isTesting}
-                    >
-                      {isTesting ? (
-                        <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
-                      ) : (
-                        <TestTube className="mr-1 h-3 w-3" />
-                      )}
-                      Test
-                    </Button>
-                  </div>
                   
-                  <CampaignList accountId={account.id} />
+                  {!account.needs_reconnection && (
+                    <CampaignList accountId={account.id} />
+                  )}
                 </div>
               ))}
             </CardContent>
