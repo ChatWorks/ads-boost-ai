@@ -5,18 +5,37 @@ import { decrypt } from '../_shared/encryption.ts';
 const GOOGLE_ADS_API_VERSION = 'v20';
 
 async function getRefreshedToken(refreshToken: string) {
+  console.log('🔐 Attempting to refresh token...');
+  
+  const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
+  const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
+  
+  console.log('🔑 Client ID available:', !!clientId);
+  console.log('🔑 Client Secret available:', !!clientSecret);
+  console.log('🔑 Refresh token length:', refreshToken?.length || 0);
+  
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: Deno.env.get('GOOGLE_ADS_CLIENT_ID')!,
-      client_secret: Deno.env.get('GOOGLE_ADS_CLIENT_SECRET')!,
+      client_id: clientId!,
+      client_secret: clientSecret!,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
   });
-  if (!response.ok) throw new Error('Failed to refresh token');
-  return await response.json();
+  
+  console.log('🔄 Refresh response status:', response.status);
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ Refresh token error:', errorText);
+    throw new Error(`Failed to refresh token: ${response.status} - ${errorText}`);
+  }
+  
+  const tokenData = await response.json();
+  console.log('✅ Token refresh successful');
+  return tokenData;
 }
 
 Deno.serve(async (req) => {
@@ -52,7 +71,12 @@ Deno.serve(async (req) => {
 
     // Get a fresh access token using the refresh token
     console.log('🔄 Getting fresh access token...');
+    console.log('🔐 Encrypted refresh token length:', account.refresh_token?.length || 0);
+    
     const refreshToken = await decrypt(account.refresh_token, Deno.env.get('ENCRYPTION_KEY')!);
+    console.log('🔓 Decrypted refresh token length:', refreshToken?.length || 0);
+    console.log('🔓 Decrypted refresh token starts with:', refreshToken?.substring(0, 10) + '...');
+    
     const tokenResponse = await getRefreshedToken(refreshToken);
     const accessToken = tokenResponse.access_token;
     console.log('✅ Got fresh access token');
