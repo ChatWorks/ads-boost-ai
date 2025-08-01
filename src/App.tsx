@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Integrations from "./pages/Integrations";
+import Campaigns from "./pages/Campaigns";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -71,6 +72,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Integrations />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/campaigns" 
+              element={
+                <ProtectedRoute>
+                  <Campaigns />
                 </ProtectedRoute>
               } 
             />
