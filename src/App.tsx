@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import Dashboard from "./pages/Dashboard";
+import Integrations from "./pages/Integrations";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -69,10 +70,7 @@ const App = () => (
               path="/integrations" 
               element={
                 <ProtectedRoute>
-                  <div className="p-6">
-                    <h1 className="text-3xl font-bold">Integrations</h1>
-                    <p className="text-muted-foreground">Manage your Google Ads connections</p>
-                  </div>
+                  <Integrations />
                 </ProtectedRoute>
               } 
             />

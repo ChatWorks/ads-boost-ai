@@ -1,1 +1,28 @@
 project_id = "ijocgytumkinjhmgferk"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://ijocgytumkinjhmgferk.supabase.co/auth/v1/callback"]
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+security_update_password_require_reauthentication = true
+
+[db]
+port = 54322
+
+[functions.google-ads-connect]
+verify_jwt = true
+
+[functions.google-ads-callback]
+verify_jwt = false
+
+[functions.google-ads-test]
+verify_jwt = true
