@@ -139,8 +139,7 @@ Deno.serve(async (req) => {
         metrics.ctr, 
         metrics.average_cpc, 
         metrics.conversions, 
-        metrics.cost_per_conversion,
-        metrics.conversion_rate
+        metrics.cost_per_conversion
       FROM campaign 
       WHERE segments.date DURING LAST_30_DAYS
       AND campaign.status != 'REMOVED'
@@ -191,7 +190,10 @@ Deno.serve(async (req) => {
         cost: (row.metrics.cost_micros || 0) / 1000000,
         average_cpc: (row.metrics.average_cpc || 0) / 1000000,
         cost_per_conversion: (row.metrics.cost_per_conversion || 0) / 1000000,
-        conversion_rate: parseFloat(row.metrics.conversion_rate || 0),
+        // Calculate conversion rate manually if we have conversions and clicks
+        conversion_rate: (row.metrics.clicks > 0 && row.metrics.conversions > 0) 
+          ? (row.metrics.conversions / row.metrics.clicks) 
+          : 0,
       }
     })) || [];
 
