@@ -7,6 +7,7 @@ import { Zap, CheckCircle, AlertTriangle, ExternalLink, RefreshCw, Trash2, TestT
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import GoogleAdsAccountSelection from '@/components/GoogleAdsAccountSelection';
+import CampaignList from '@/components/CampaignList';
 
 type FlowStep = 'connect' | 'select_accounts' | 'completed';
 
@@ -385,6 +386,8 @@ export default function Integrations() {
                       Test
                     </Button>
                   </div>
+                  
+                  <CampaignList accountId={account.id} />
                 </div>
               ))}
             </CardContent>
