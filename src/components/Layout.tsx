@@ -36,11 +36,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex-1 flex flex-col">
           {/* Header with sidebar trigger */}
           <header className="h-12 flex items-center border-b bg-card px-4 shadow-sm">
-            <SidebarTrigger asChild>
-              <Button variant="ghost" size="sm" className="md:hidden">
-                <Menu className="h-4 w-4" />
-              </Button>
-            </SidebarTrigger>
+            <SidebarTrigger />
             <div className="flex-1" />
           </header>
           
