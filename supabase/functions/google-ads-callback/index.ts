@@ -45,18 +45,26 @@ Deno.serve(async (req) => {
     const state = url.searchParams.get('state');
     const error = url.searchParams.get('error');
 
+    console.log('📥 Callback received:', { 
+      hasCode: !!code, 
+      hasState: !!state, 
+      error: error,
+      fullUrl: req.url 
+    });
+
     if (error) {
-      console.error('OAuth error:', error);
+      console.error('❌ OAuth error from Google:', error);
       return new Response(null, {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${Deno.env.get('SUPABASE_URL')}/auth/callback?error=${encodeURIComponent(error)}`
+          'Location': `http://localhost:3000/integrations?error=${encodeURIComponent(error)}`
         }
       });
     }
 
     if (!code || !state) {
+      console.error('❌ Missing required parameters:', { code: !!code, state: !!state });
       throw new Error('Missing authorization code or state');
     }
 
