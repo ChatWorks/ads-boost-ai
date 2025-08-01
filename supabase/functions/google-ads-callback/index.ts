@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Encryption functions
+// Encryption function
 async function encrypt(text: string, key: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
@@ -107,39 +107,145 @@ Deno.serve(async (req) => {
     // Encrypt refresh token
     const encryptedRefreshToken = await encrypt(tokens.refresh_token, Deno.env.get('ENCRYPTION_KEY') ?? '');
 
-    // For now, skip Google Ads API calls and just store the OAuth connection
-    // TODO: Add Google Ads API calls after developer token is properly configured
-    console.log('✅ Skipping Google Ads API calls for now, storing OAuth tokens only');
+    // NOW GET REAL GOOGLE ADS CUSTOMER IDs WITH YOUR APPROVED DEVELOPER TOKEN
+    console.log('🔍 Fetching accessible Google Ads customers...');
+    
+    const developerToken = Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN');
+    if (!developerToken) {
+      console.error('❌ No developer token found');
+      throw new Error('Developer token not configured');
+    }
 
-    // Store a basic account record with the refresh token
-    await supabaseClient
-      .from('google_ads_accounts')
-      .upsert({
-        user_id: state,
-        customer_id: 'pending_setup', // Temporary placeholder
-        account_name: 'Google Ads Account (Setup Required)',
-        currency_code: null,
-        time_zone: null,
-        refresh_token: encryptedRefreshToken,
-        is_active: false, // Mark as inactive until proper setup
-      }, {
-        onConflict: 'user_id,customer_id'
+    let accessibleCustomers: string[] = [];
+    let customerDetails: any[] = [];
+
+    try {
+      // Get list of accessible customers
+      const customersResponse = await fetch('https://googleads.googleapis.com/v16/customers:listAccessibleCustomers', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+          'developer-token': developerToken,
+          'Content-Type': 'application/json',
+        },
       });
 
-    console.log('✅ Successfully stored OAuth tokens for user:', state);
+      if (customersResponse.ok) {
+        const customersData = await customersResponse.json();
+        accessibleCustomers = customersData.resourceNames || [];
+        console.log('✅ Found accessible customers:', accessibleCustomers.length);
 
-    // Redirect back to frontend
+        // Get details for each customer
+        for (const customerResource of accessibleCustomers.slice(0, 10)) { // Limit to first 10
+          const customerId = customerResource.replace('customers/', '');
+          
+          try {
+            const customerDetailResponse = await fetch(`https://googleads.googleapis.com/v16/customers/${customerId}/googleAds:search`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${tokens.access_token}`,
+                'developer-token': developerToken,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                query: `SELECT 
+                  customer.id, 
+                  customer.descriptive_name, 
+                  customer.currency_code, 
+                  customer.time_zone,
+                  customer.manager,
+                  customer.test_account
+                FROM customer 
+                LIMIT 1`
+              }),
+            });
+
+            if (customerDetailResponse.ok) {
+              const detailData = await customerDetailResponse.json();
+              if (detailData.results && detailData.results.length > 0) {
+                const customer = detailData.results[0].customer;
+                customerDetails.push({
+                  customer_id: customer.id,
+                  account_name: customer.descriptive_name || `Account ${customer.id}`,
+                  currency_code: customer.currency_code,
+                  time_zone: customer.time_zone,
+                  is_manager: customer.manager || false,
+                  is_test: customer.test_account || false,
+                });
+              }
+            }
+          } catch (detailError) {
+            console.log('⚠️ Could not get details for customer:', customerId, detailError);
+          }
+        }
+      } else {
+        const customerError = await customersResponse.text();
+        console.error('❌ Could not fetch customers:', customerError);
+      }
+    } catch (apiError) {
+      console.error('❌ Google Ads API error:', apiError);
+    }
+
+    // Store accounts in database
+    console.log('💾 Storing accounts in database...');
+    
+    if (customerDetails.length > 0) {
+      // Store each real account
+      for (const customerDetail of customerDetails) {
+        await supabaseClient
+          .from('google_ads_accounts')
+          .upsert({
+            user_id: state,
+            customer_id: customerDetail.customer_id,
+            account_name: customerDetail.account_name,
+            currency_code: customerDetail.currency_code,
+            time_zone: customerDetail.time_zone,
+            is_manager: customerDetail.is_manager,
+            account_type: customerDetail.is_test ? 'TEST' : 'PRODUCTION',
+            refresh_token: encryptedRefreshToken,
+            is_active: true,
+            connection_status: 'CONNECTED',
+            developer_token_status: 'BASIC_ACCESS', // or 'STANDARD_ACCESS' based on your token
+            last_connection_test: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id,customer_id'
+          });
+      }
+      
+      console.log('✅ Stored', customerDetails.length, 'Google Ads accounts');
+    } else {
+      // Fallback: store a placeholder if no customers found
+      console.log('⚠️ No accessible customers found, storing placeholder...');
+      
+      await supabaseClient
+        .from('google_ads_accounts')
+        .upsert({
+          user_id: state,
+          customer_id: 'no_accounts_found',
+          account_name: 'No Google Ads Accounts Found',
+          refresh_token: encryptedRefreshToken,
+          is_active: false,
+          connection_status: 'ERROR',
+          developer_token_status: 'UNKNOWN',
+        }, {
+          onConflict: 'user_id,customer_id'
+        });
+    }
+
+    console.log('✅ Successfully completed OAuth flow for user:', state);
+
+    // Redirect back to frontend with success
     const frontendUrl = 'https://preview--ads-boost-ai.lovable.app';
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': `${frontendUrl}/integrations?success=true`
+        'Location': `${frontendUrl}/integrations?success=true&accounts=${customerDetails.length}`
       }
     });
 
   } catch (error) {
-    console.error('Error in google-ads-callback:', error);
+    console.error('❌ Error in google-ads-callback:', error);
     const frontendUrl = 'https://preview--ads-boost-ai.lovable.app';
     return new Response(null, {
       status: 302,
