@@ -51,6 +51,14 @@ export default function Integrations() {
 
       if (data?.authUrl) {
         console.log('✅ Got auth URL, redirecting to:', data.authUrl);
+        console.log('🔧 Expected redirect URI:', data.redirectUri);
+        
+        // Show the redirect URI to help with debugging
+        toast({
+          title: "Redirect URI Info",
+          description: `Expected redirect URI: ${data.redirectUri}`,
+        });
+        
         window.location.href = data.authUrl;
       } else {
         console.error('❌ No authUrl in response:', data);

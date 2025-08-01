@@ -32,7 +32,13 @@ Deno.serve(async (req) => {
     }
 
     const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
-    const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-ads-callback`;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const redirectUri = `${supabaseUrl}/functions/v1/google-ads-callback`;
+
+    console.log('🔧 OAuth Configuration:');
+    console.log('Client ID:', clientId);
+    console.log('Redirect URI:', redirectUri);
+    console.log('Supabase URL:', supabaseUrl);
 
     if (!clientId) {
       throw new Error('Google Ads client ID not configured');
@@ -53,10 +59,12 @@ Deno.serve(async (req) => {
     oauthUrl.searchParams.set('state', user.id);
 
     console.log('Generated OAuth URL for user:', user.id);
+    console.log('Full OAuth URL:', oauthUrl.toString());
 
     return new Response(
       JSON.stringify({ 
         authUrl: oauthUrl.toString(),
+        redirectUri: redirectUri,
         message: 'Redirect to this URL to complete Google Ads authorization'
       }),
       {
