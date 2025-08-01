@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `http://localhost:3000/integrations?error=${encodeURIComponent(error)}`
+          'Location': `${req.headers.get('origin') || 'http://localhost:3000'}/integrations?error=${encodeURIComponent(error)}`
         }
       });
     }
@@ -156,21 +156,23 @@ Deno.serve(async (req) => {
     console.log('Successfully stored Google Ads accounts for user:', state);
 
     // Redirect back to frontend
+    const frontendUrl = req.headers.get('referer')?.split('/integrations')[0] || 'http://localhost:3000';
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': `http://localhost:3000/integrations?success=true`
+        'Location': `${frontendUrl}/integrations?success=true`
       }
     });
 
   } catch (error) {
     console.error('Error in google-ads-callback:', error);
+    const frontendUrl = req.headers.get('referer')?.split('/integrations')[0] || 'http://localhost:3000';
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': `http://localhost:3000/integrations?error=${encodeURIComponent(error.message)}`
+        'Location': `${frontendUrl}/integrations?error=${encodeURIComponent(error.message)}`
       }
     });
   }
