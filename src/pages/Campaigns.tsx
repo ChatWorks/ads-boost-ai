@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import CampaignList from '@/components/CampaignList';
+import AdGroupsList from '@/components/AdGroupsList';
+import KeywordsList from '@/components/KeywordsList';
+import CampaignFilters from '@/components/CampaignFilters';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -22,6 +26,15 @@ export default function Campaigns() {
   const [accounts, setAccounts] = useState<GoogleAdsAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<GoogleAdsAccount | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    dateRange: 'LAST_30_DAYS' as const,
+    startDate: undefined as Date | undefined,
+    endDate: undefined as Date | undefined,
+    metrics: ['impressions', 'clicks', 'cost_micros', 'ctr', 'conversions'],
+    campaignStatus: ['ENABLED'],
+    limit: 50
+  });
+  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
@@ -57,6 +70,15 @@ export default function Campaigns() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFiltersChange = (newFilters: any) => {
+    setFilters(newFilters);
+  };
+
+  const handleApplyFilters = () => {
+    setIsApplyingFilters(true);
+    setTimeout(() => setIsApplyingFilters(false), 500);
   };
 
   if (isLoading) {
@@ -162,7 +184,44 @@ export default function Campaigns() {
         </div>
       </div>
 
-      <CampaignList accountId={selectedAccount.id} />
+      <CampaignFilters 
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        onApplyFilters={handleApplyFilters}
+        isLoading={isApplyingFilters}
+      />
+
+      <Tabs defaultValue="campaigns" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsTrigger value="adgroups">Ad Groups</TabsTrigger>
+          <TabsTrigger value="keywords">Keywords</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="campaigns">
+          <CampaignList 
+            accountId={selectedAccount.id} 
+            filters={filters}
+            key={`campaigns-${isApplyingFilters}`}
+          />
+        </TabsContent>
+        
+        <TabsContent value="adgroups">
+          <AdGroupsList 
+            accountId={selectedAccount.id} 
+            filters={filters}
+            key={`adgroups-${isApplyingFilters}`}
+          />
+        </TabsContent>
+        
+        <TabsContent value="keywords">
+          <KeywordsList 
+            accountId={selectedAccount.id} 
+            filters={filters}
+            key={`keywords-${isApplyingFilters}`}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

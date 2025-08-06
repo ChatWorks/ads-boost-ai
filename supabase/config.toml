@@ -26,3 +26,12 @@ verify_jwt = false
 
 [functions.google-ads-test]
 verify_jwt = true
+
+[functions.get-campaigns]
+verify_jwt = true
+
+[functions.get-adgroups]
+verify_jwt = true
+
+[functions.get-keywords]
+verify_jwt = true

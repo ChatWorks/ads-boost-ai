@@ -15,9 +15,10 @@ interface Campaign {
 
 interface CampaignListProps {
   accountId: string;
+  filters?: CampaignFiltersType;
 }
 
-export default function CampaignList({ accountId }: CampaignListProps) {
+export default function CampaignList({ accountId, filters: externalFilters }: CampaignListProps) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,10 +34,11 @@ export default function CampaignList({ accountId }: CampaignListProps) {
       setIsLoading(true);
       setError(null);
 
+      const filtersToUse = externalFilters || filters;
       const { data, error } = await supabase.functions.invoke('get-campaigns', {
         body: { 
           accountId,
-          filters: filters
+          filters: filtersToUse
         }
       });
 
@@ -79,7 +81,7 @@ export default function CampaignList({ accountId }: CampaignListProps) {
 
   useEffect(() => {
     fetchCampaigns();
-  }, [accountId]);
+  }, [accountId, externalFilters]);
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -159,13 +161,15 @@ export default function CampaignList({ accountId }: CampaignListProps) {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <CampaignFilters
-        filters={filters}
-        onFiltersChange={setFilters}
-        onApplyFilters={fetchCampaigns}
-        isLoading={isLoading}
-      />
+      {/* Only show filters if no external filters provided */}
+      {!externalFilters && (
+        <CampaignFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+          onApplyFilters={fetchCampaigns}
+          isLoading={isLoading}
+        />
+      )}
 
       {/* Results */}
       {isLoading && (
@@ -209,10 +213,10 @@ export default function CampaignList({ accountId }: CampaignListProps) {
                   </div>
                   
                   {/* Dynamic metrics display */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-xs">
-                    {Object.entries(campaign.metrics)
-                      .filter(([key]) => filters.metrics.includes(key) || key === 'cost' || key === 'conversion_rate')
-                      .slice(0, 8) // Limit display to prevent overflow
+                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-xs">
+                     {Object.entries(campaign.metrics)
+                       .filter(([key]) => (externalFilters || filters).metrics.includes(key) || key === 'cost' || key === 'conversion_rate')
+                       .slice(0, 8) // Limit display to prevent overflow
                       .map(([metricKey, value]) => (
                         <div key={metricKey} className="text-center">
                           <div className="flex items-center justify-center gap-1 mb-1">
