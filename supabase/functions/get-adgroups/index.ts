@@ -1,4 +1,3 @@
-// file: get-adgroups.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { decrypt } from '../_shared/encryption.ts';
@@ -11,15 +10,15 @@ async function getRefreshedToken(
   supabaseAdmin: any
 ) {
   console.log('🔐 Attempting to refresh token...');
-  const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
-  const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
+  const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID')!;
+  const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET')!;
 
   const resp = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: clientId!,
-      client_secret: clientSecret!,
+      client_id: clientId,
+      client_secret: clientSecret,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
@@ -43,13 +42,13 @@ Deno.serve(async (req) => {
     const { accountId, filters } = await req.json();
     if (!accountId) throw new Error('Account ID is required');
 
-    // Supabase init
+    // Initialiseer Supabase admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Haal account op
+    // Haal accountgegevens op
     const { data: account, error: accountError } = await supabaseAdmin
       .from('google_ads_accounts')
       .select('customer_id, refresh_token, needs_reconnection')
@@ -57,29 +56,29 @@ Deno.serve(async (req) => {
       .single();
 
     if (accountError || !account) {
-      console.error('❌ Database error or account missing:', accountError);
-      throw new Error('Google Ads account not found.');
+      console.error('❌ Database error of account niet gevonden:', accountError);
+      throw new Error('Google Ads account niet gevonden.');
     }
     if (account.needs_reconnection) {
-      console.error('❌ Account needs reconnection');
-      throw new Error('Account requires reconnection.');
+      console.error('❌ Account moet opnieuw verbonden worden');
+      throw new Error('Account vereist reconnection.');
     }
 
-    // Refresh token
-    const refreshToken = await decrypt(
+    // Verfris access token
+    const decryptedRefreshToken = await decrypt(
       account.refresh_token,
       Deno.env.get('ENCRYPTION_KEY')!
     );
     const { access_token } = await getRefreshedToken(
-      refreshToken,
+      decryptedRefreshToken,
       accountId,
       supabaseAdmin
     );
     console.log('✅ Got fresh access token');
 
-    // Metrics (zorg dat cost_micros altijd mee komt)
-    const defaultMetrics = ['impressions', 'clicks', 'cost_micros'];
-    const selectedMetrics = filters?.metrics?.slice() || defaultMetrics;
+    // Metrics: zorg dat cost_micros altijd mee komt
+    const baseMetrics = ['impressions', 'clicks', 'cost_micros'];
+    const selectedMetrics = filters?.metrics?.slice() || baseMetrics;
     if (!selectedMetrics.includes('cost_micros')) {
       selectedMetrics.push('cost_micros');
     }
@@ -88,48 +87,47 @@ Deno.serve(async (req) => {
     // Datumfilter
     let dateCondition = 'segments.date DURING LAST_30_DAYS';
     if (filters?.dateRange) {
-      const dr = filters.dateRange;
-      if (dr === 'LAST_7_DAYS') dateCondition = 'segments.date DURING LAST_7_DAYS';
-      else if (dr === 'LAST_14_DAYS')
-        dateCondition = 'segments.date DURING LAST_14_DAYS';
-      else if (dr === 'LAST_90_DAYS')
-        dateCondition = 'segments.date DURING LAST_90_DAYS';
-      else if (
-        dr === 'CUSTOM' &&
-        filters.startDate &&
-        filters.endDate
-      ) {
-        const sd = new Date(filters.startDate)
-          .toISOString()
-          .split('T')[0]
-          .replace(/-/g, '');
-        const ed = new Date(filters.endDate)
-          .toISOString()
-          .split('T')[0]
-          .replace(/-/g, '');
-        dateCondition = `segments.date BETWEEN '${sd}' AND '${ed}'`;
+      switch (filters.dateRange) {
+        case 'LAST_7_DAYS':
+          dateCondition = 'segments.date DURING LAST_7_DAYS';
+          break;
+        case 'LAST_14_DAYS':
+          dateCondition = 'segments.date DURING LAST_14_DAYS';
+          break;
+        case 'LAST_90_DAYS':
+          dateCondition = 'segments.date DURING LAST_90_DAYS';
+          break;
+        case 'CUSTOM':
+          if (filters.startDate && filters.endDate) {
+            const sd = new Date(filters.startDate).toISOString().slice(0,10).replace(/-/g,'');
+            const ed = new Date(filters.endDate).toISOString().slice(0,10).replace(/-/g,'');
+            dateCondition = `segments.date BETWEEN '${sd}' AND '${ed}'`;
+          }
+          break;
       }
     }
 
     const limit = filters?.limit || 50;
 
-    // GAQL-query
+    // GAQL-query zonder AS
     const query = `
       SELECT
         ad_group.id,
         ad_group.name,
         ad_group.status,
-        campaign.name AS campaign_name,
+        campaign.id,
+        campaign.name,
         segments.device,
         ${metricsQuery}
       FROM ad_group
       WHERE ${dateCondition}
       ORDER BY metrics.impressions DESC
-      LIMIT ${limit}`;
+      LIMIT ${limit}
+    `.trim();
 
-    console.log('📊 Generated AdGroup query:', query.trim());
+    console.log('📊 Generated AdGroup query:', query);
 
-    // API-call (zonder extra parameters in de payload)
+    // API-call (alleen query in payload)
     const customerId = account.customer_id.replace(/-/g, '');
     let response = await fetch(
       `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${customerId}/googleAds:searchStream`,
@@ -137,7 +135,7 @@ Deno.serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${access_token}`,
+          Authorization: `Bearer ${access_token}`,
           'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN')!,
           'login-customer-id': customerId,
         },
@@ -147,8 +145,8 @@ Deno.serve(async (req) => {
 
     // Token-refresh fallback
     if (response.status === 401) {
-      const newTokens = await getRefreshedToken(
-        refreshToken,
+      const tokens = await getRefreshedToken(
+        decryptedRefreshToken,
         accountId,
         supabaseAdmin
       );
@@ -158,10 +156,8 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${newTokens.access_token}`,
-            'developer-token': Deno.env.get(
-              'GOOGLE_ADS_DEVELOPER_TOKEN'
-            )!,
+            Authorization: `Bearer ${tokens.access_token}`,
+            'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN')!,
             'login-customer-id': customerId,
           },
           body: JSON.stringify({ query }),
@@ -170,27 +166,29 @@ Deno.serve(async (req) => {
     }
 
     if (!response.ok) {
-      const err = await response.text();
-      console.error('❌ API Error:', err);
-      throw new Error(`Google Ads API error (${response.status}): ${err}`);
+      const errText = await response.text();
+      console.error('❌ API Error:', errText);
+      throw new Error(`Google Ads API error (${response.status}): ${errText}`);
     }
 
     const data = await response.json();
     console.log('✅ Raw API response received');
 
-    // Mappen en kosten omrekenen
-    const adGroups =
-      data[0]?.results?.map((row: any) => ({
-        id: row.ad_group?.id,
-        name: row.ad_group?.name,
-        status: row.ad_group?.status,
-        campaign_name: row.campaign_name,
-        device: row.segments?.device,
-        metrics: {
-          ...row.metrics,
-          cost: (row.metrics.cost_micros || 0) / 1e6,
-        },
-      })) || [];
+    // Mapping en kosten omrekenen
+    const adGroups = data[0]?.results?.map((row: any) => ({
+      id:               row.adGroup?.id,
+      name:             row.adGroup?.name,
+      status:           row.adGroup?.status,
+      campaign_id:      row.campaign?.id,
+      campaign_name:    row.campaign?.name,
+      device:           row.segments?.device,
+      metrics: {
+        impressions: parseInt(row.metrics.impressions as string, 10),
+        clicks:      parseInt(row.metrics.clicks as string, 10),
+        cost_micros: parseInt(row.metrics.costMicros as string, 10),
+        cost:        parseInt(row.metrics.costMicros as string, 10) / 1e6,
+      },
+    })) || [];
 
     console.log(`✅ Processed ${adGroups.length} ad groups`);
 
