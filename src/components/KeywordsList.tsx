@@ -35,6 +35,7 @@ interface KeywordsListProps {
 
 const KeywordsList: React.FC<KeywordsListProps> = ({ accountId, filters }) => {
   const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [rawResponse, setRawResponse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -57,6 +58,7 @@ const KeywordsList: React.FC<KeywordsListProps> = ({ accountId, filters }) => {
       }
 
       setKeywords(data.keywords || []);
+      setRawResponse(data);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch keywords';
       setError(errorMessage);
@@ -184,6 +186,19 @@ const KeywordsList: React.FC<KeywordsListProps> = ({ accountId, filters }) => {
           </Table>
         </CardContent>
       </Card>
+      
+      {rawResponse && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Raw Google Ads API Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-xs overflow-auto max-h-96 bg-muted p-4 rounded">
+              {JSON.stringify(rawResponse, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
