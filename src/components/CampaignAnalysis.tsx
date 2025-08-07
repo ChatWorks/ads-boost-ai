@@ -98,6 +98,18 @@ export default function CampaignAnalysis() {
     }, 2000);
   };
 
+  const undoSuggestion = (id: string) => {
+    setSuggestions(prev => 
+      prev.map(s => s.id === id ? { ...s, executed: false } : s)
+    );
+
+    toast({
+      title: "Aanpassing ongedaan gemaakt",
+      description: "De optimalisatie is geannuleerd",
+      variant: "default",
+    });
+  };
+
   const executedCount = suggestions.filter(s => s.executed).length;
   const totalImpact = suggestions
     .filter(s => s.executed)
@@ -140,17 +152,27 @@ export default function CampaignAnalysis() {
           {suggestions.map((suggestion) => (
             <div 
               key={suggestion.id}
-              className={`p-4 border rounded-lg transition-all ${
+              className={`relative p-4 border rounded-lg transition-all duration-500 ${
                 suggestion.executed 
-                  ? 'bg-green-50 border-green-200 opacity-75' 
+                  ? 'bg-green-50 border-green-200 shadow-lg scale-[1.02] animate-pulse' 
                   : 'bg-background border-border hover:border-primary/50'
               }`}
             >
-              <div className="flex items-start justify-between gap-4">
+              {suggestion.executed && (
+                <div className="absolute inset-0 bg-green-100/50 rounded-lg animate-fade-in">
+                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold animate-scale-in">
+                    ✓ LIVE
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex items-start justify-between gap-4 relative z-10">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     {getCategoryIcon(suggestion.category)}
-                    <h3 className={`font-medium ${suggestion.executed ? 'line-through text-muted-foreground' : ''}`}>
+                    <h3 className={`font-medium transition-all duration-300 ${
+                      suggestion.executed ? 'line-through text-muted-foreground' : ''
+                    }`}>
                       {suggestion.title}
                     </h3>
                     <Badge 
@@ -165,17 +187,29 @@ export default function CampaignAnalysis() {
                     {suggestion.description}
                   </p>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-primary">
+                    <span className={`text-sm font-medium transition-all duration-300 ${
+                      suggestion.executed ? 'text-green-600' : 'text-primary'
+                    }`}>
                       📈 {suggestion.improvement}
                     </span>
                   </div>
                 </div>
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 flex items-center gap-2">
                   {suggestion.executed ? (
-                    <div className="flex items-center gap-2 text-green-600">
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Uitgevoerd</span>
-                    </div>
+                    <>
+                      <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="text-sm font-medium">Uitgevoerd</span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => undoSuggestion(suggestion.id)}
+                        className="bg-white border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600"
+                      >
+                        Ongedaan maken
+                      </Button>
+                    </>
                   ) : (
                     <Button 
                       size="sm" 
