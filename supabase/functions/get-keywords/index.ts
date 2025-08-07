@@ -5,17 +5,20 @@ import { decrypt } from '../_shared/encryption.ts';
 
 const GOOGLE_ADS_API_VERSION = 'v20';
 
-async function getRefreshedToken(refreshToken: string, accountId: string, supabaseAdmin: any) {
-  console.log('🔐 Attempting to refresh token...');
-  const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
-  const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
-
+async function getRefreshedToken(
+  refreshToken: string,
+  accountId: string,
+  supabaseAdmin: any
+) {
+  console.log('🔐 Refresh token...');
+  const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID')!;
+  const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET')!;
   const resp = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: clientId!,
-      client_secret: clientSecret!,
+      client_id: clientId,
+      client_secret: clientSecret,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
@@ -23,13 +26,10 @@ async function getRefreshedToken(refreshToken: string, accountId: string, supaba
 
   if (!resp.ok) {
     const txt = await resp.text();
-    console.error('❌ Token refresh error:', txt);
-    throw new Error(`Failed to refresh token: ${resp.status} - ${txt}`);
+    console.error('❌ Token refresh failed:', txt);
+    throw new Error(`Refresh failed: ${resp.status} – ${txt}`);
   }
-
-  const tokenData = await resp.json();
-  console.log('✅ Token refresh successful');
-  return tokenData;
+  return await resp.json();
 }
 
 Deno.serve(async (req) => {
@@ -38,64 +38,62 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🚀 get-keywords function called');
+    console.log('🚀 get-keywords called');
     const { accountId, filters } = await req.json();
-    console.log('📝 Account ID:', accountId);
-    console.log('📝 Filters:', JSON.stringify(filters, null, 2));
-
     if (!accountId) throw new Error('Account ID is required');
 
-    // Initialize Supabase client
+    // Supabase admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Fetch account record
-    const { data: account, error: accountError } = await supabaseAdmin
+    // Haal account uit DB
+    const { data: account, error: accErr } = await supabaseAdmin
       .from('google_ads_accounts')
       .select('customer_id, refresh_token, needs_reconnection')
       .eq('id', accountId)
       .single();
 
-    if (accountError || !account) {
-      console.error('❌ Database error or account missing:', accountError);
-      throw new Error('Google Ads account not found.');
-    }
-    if (account.needs_reconnection) {
-      console.error('❌ Account needs reconnection');
-      throw new Error('Account requires reconnection.');
-    }
+    if (accErr || !account) throw new Error('Google Ads account niet gevonden.');
+    if (account.needs_reconnection) throw new Error('Account moet opnieuw verbonden worden.');
 
-    // Decrypt and refresh token
-    const refreshToken = await decrypt(account.refresh_token, Deno.env.get('ENCRYPTION_KEY')!);
-    const { access_token } = await getRefreshedToken(refreshToken, accountId, supabaseAdmin);
-    console.log('✅ Got fresh access token');
+    // Nieuwe access token
+    const decrypted = await decrypt(account.refresh_token, Deno.env.get('ENCRYPTION_KEY')!);
+    const { access_token } = await getRefreshedToken(decrypted, accountId, supabaseAdmin);
 
-    // Build metrics list, ensuring cost_micros is included
-    const defaultMetrics = ['clicks', 'cost_micros', 'impressions'];
-    const selectedMetrics = filters?.metrics?.slice() || defaultMetrics;
-    if (!selectedMetrics.includes('cost_micros')) selectedMetrics.push('cost_micros');
-    const metricsQuery = selectedMetrics.map(m => `metrics.${m}`).join(', ');
+    // Metrics: zorg dat cost_micros altijd mee komt
+    const baseMetrics = ['clicks', 'impressions', 'cost_micros'];
+    const sel = filters?.metrics?.slice() || baseMetrics;
+    if (!sel.includes('cost_micros')) sel.push('cost_micros');
+    const metricsQuery = sel.map(m => `metrics.${m}`).join(', ');
 
-    // Build date filter
-    let dateCondition = 'segments.date DURING LAST_30_DAYS';
+    // Datumfilter
+    let dateCond = 'segments.date DURING LAST_30_DAYS';
     if (filters?.dateRange) {
-      const dr = filters.dateRange;
-      if (dr === 'LAST_7_DAYS') dateCondition = 'segments.date DURING LAST_7_DAYS';
-      else if (dr === 'LAST_14_DAYS') dateCondition = 'segments.date DURING LAST_14_DAYS';
-      else if (dr === 'LAST_90_DAYS') dateCondition = 'segments.date DURING LAST_90_DAYS';
-      else if (dr === 'CUSTOM' && filters.startDate && filters.endDate) {
-        const sd = new Date(filters.startDate).toISOString().split('T')[0].replace(/-/g, '');
-        const ed = new Date(filters.endDate).toISOString().split('T')[0].replace(/-/g, '');
-        dateCondition = `segments.date BETWEEN '${sd}' AND '${ed}'`;
+      switch (filters.dateRange) {
+        case 'LAST_7_DAYS':
+          dateCond = 'segments.date DURING LAST_7_DAYS';
+          break;
+        case 'LAST_14_DAYS':
+          dateCond = 'segments.date DURING LAST_14_DAYS';
+          break;
+        case 'LAST_90_DAYS':
+          dateCond = 'segments.date DURING LAST_90_DAYS';
+          break;
+        case 'CUSTOM':
+          if (filters.startDate && filters.endDate) {
+            const sd = filters.startDate.replace(/-/g, '');
+            const ed = filters.endDate.replace(/-/g, '');
+            dateCond = `segments.date BETWEEN '${sd}' AND '${ed}'`;
+          }
+          break;
       }
     }
 
-    // Limit
     const limit = filters?.limit || 200;
 
-    // Build GAQL query
+    // GAQL-query
     const query = `
       SELECT
         campaign.id,
@@ -106,60 +104,82 @@ Deno.serve(async (req) => {
         ad_group_criterion.keyword.match_type,
         ${metricsQuery}
       FROM keyword_view
-      WHERE ${dateCondition}
+      WHERE ${dateCond}
       ORDER BY metrics.clicks DESC
-      LIMIT ${limit}`;
+      LIMIT ${limit}
+    `;
 
-    console.log('📊 Generated Keywords query:', query.trim());
+    console.log('📊 Query:', query.trim());
 
-    // Make API call
+    // API-call
     const customerId = account.customer_id.replace(/-/g, '');
-    const response = await fetch(
+    let resp = await fetch(
       `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${customerId}/googleAds:searchStream`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${access_token}`,
+          Authorization: `Bearer ${access_token}`,
           'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN')!,
           'login-customer-id': customerId,
         },
-        body: JSON.stringify({ query }),  // only the query in the payload
+        body: JSON.stringify({ query }),
       }
     );
 
-    console.log('📊 API Response status:', response.status);
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('❌ API Error:', errText);
-      throw new Error(`Google Ads API error (${response.status}): ${errText}`);
+    // Fallback bij verlopen token
+    if (resp.status === 401) {
+      const tokens = await getRefreshedToken(decrypted, accountId, supabaseAdmin);
+      resp = await fetch(
+        `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${customerId}/googleAds:searchStream`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${tokens.access_token}`,
+            'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN')!,
+            'login-customer-id': customerId,
+          },
+          body: JSON.stringify({ query }),
+        }
+      );
     }
 
-    const data = await response.json();
-    console.log('✅ Raw API response received');
+    if (!resp.ok) {
+      const errTxt = await resp.text();
+      console.error('❌ API error:', errTxt);
+      throw new Error(`Google Ads API error (${resp.status}): ${errTxt}`);
+    }
 
-    // Map results
-    const keywords = data[0]?.results?.map((row: any) => ({
-      campaign_id: row.campaign?.id,
-      campaign_name: row.campaign?.name,
-      ad_group_id: row.ad_group?.id,
-      ad_group_name: row.ad_group?.name,
-      keyword_text: row.ad_group_criterion?.keyword?.text,
-      match_type: row.ad_group_criterion?.keyword?.match_type,
-      metrics: {
-        ...row.metrics,
-        cost: (row.metrics.cost_micros || 0) / 1e6,
-      },
-    })) || [];
+    const payload = await resp.json();
+    console.log('✅ API response binnen');
 
-    console.log(`✅ Processed ${keywords.length} keywords`);
+    // Mappen en type-conversies
+    const keywords =
+      payload[0]?.results?.map((row: any) => ({
+        campaign_id:   row.campaign?.id,
+        campaign_name: row.campaign?.name,
+        ad_group_id:   row.adGroup?.id,
+        ad_group_name: row.adGroup?.name,
+        keyword_text:  row.adGroupCriterion?.keyword?.text,
+        match_type:    row.adGroupCriterion?.keyword?.matchType,
+        metrics: {
+          clicks:      parseInt(row.metrics.clicks as string, 10),
+          impressions: parseInt(row.metrics.impressions as string, 10),
+          cost_micros: parseInt(row.metrics.costMicros as string, 10),
+          cost:        parseInt(row.metrics.costMicros as string, 10) / 1e6,
+          ctr:         row.metrics.ctr,
+          conversions: row.metrics.conversions,
+        },
+      })) || [];
 
+    console.log(`✅ ${keywords.length} keywords verwerkt`);
     return new Response(JSON.stringify({ keywords }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (err: any) {
-    console.error('💥 Function error:', err.message);
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch (e: any) {
+    console.error('💥 Error in get-keywords:', e.message);
+    return new Response(JSON.stringify({ error: e.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     });
