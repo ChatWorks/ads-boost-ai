@@ -98,14 +98,12 @@ export default function CampaignAnalysis() {
     }, 2000);
   };
 
-  const undoSuggestion = (id: string) => {
-    setSuggestions(prev => 
-      prev.map(s => s.id === id ? { ...s, executed: false } : s)
-    );
+  const deleteSuggestion = (id: string) => {
+    setSuggestions(prev => prev.filter(s => s.id !== id));
 
     toast({
-      title: "Aanpassing ongedaan gemaakt",
-      description: "De optimalisatie is geannuleerd",
+      title: "Suggestie verwijderd",
+      description: "De optimalisatie suggestie is verwijderd",
       variant: "default",
     });
   };
@@ -152,25 +150,17 @@ export default function CampaignAnalysis() {
           {suggestions.map((suggestion) => (
             <div 
               key={suggestion.id}
-              className={`relative p-4 border rounded-lg transition-all duration-500 ${
+              className={`p-4 border rounded-lg transition-all ${
                 suggestion.executed 
-                  ? 'bg-green-50 border-green-200 shadow-lg scale-[1.02] animate-pulse' 
+                  ? 'bg-green-50 border-green-200' 
                   : 'bg-background border-border hover:border-primary/50'
               }`}
             >
-              {suggestion.executed && (
-                <div className="absolute inset-0 bg-green-100/50 rounded-lg animate-fade-in">
-                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold animate-scale-in">
-                    ✓ LIVE
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex items-start justify-between gap-4 relative z-10">
+              <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     {getCategoryIcon(suggestion.category)}
-                    <h3 className={`font-medium transition-all duration-300 ${
+                    <h3 className={`font-medium ${
                       suggestion.executed ? 'line-through text-muted-foreground' : ''
                     }`}>
                       {suggestion.title}
@@ -187,7 +177,7 @@ export default function CampaignAnalysis() {
                     {suggestion.description}
                   </p>
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-medium transition-all duration-300 ${
+                    <span className={`text-sm font-medium ${
                       suggestion.executed ? 'text-green-600' : 'text-primary'
                     }`}>
                       📈 {suggestion.improvement}
@@ -196,28 +186,28 @@ export default function CampaignAnalysis() {
                 </div>
                 <div className="flex-shrink-0 flex items-center gap-2">
                   {suggestion.executed ? (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Uitgevoerd</span>
+                    </div>
+                  ) : (
                     <>
-                      <div className="flex items-center gap-2 text-green-600">
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">Uitgevoerd</span>
-                      </div>
+                      <Button 
+                        size="sm" 
+                        onClick={() => executeSuggestion(suggestion.id)}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        Uitvoeren
+                      </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => undoSuggestion(suggestion.id)}
-                        className="bg-white border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600"
+                        onClick={() => deleteSuggestion(suggestion.id)}
+                        className="border-red-500 text-red-600 hover:bg-red-50 hover:border-red-600"
                       >
-                        Ongedaan maken
+                        Verwijderen
                       </Button>
                     </>
-                  ) : (
-                    <Button 
-                      size="sm" 
-                      onClick={() => executeSuggestion(suggestion.id)}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      Uitvoeren
-                    </Button>
                   )}
                 </div>
               </div>
