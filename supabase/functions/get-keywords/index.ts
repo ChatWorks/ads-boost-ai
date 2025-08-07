@@ -27,20 +27,29 @@ async function getRefreshedToken(refreshToken: string, accountId: string, supaba
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
+    console.log('🔍 get-keywords function called');
     const { accountId, filters } = await req.json();
+    console.log('📝 Request data:', { accountId, filters });
     if (!accountId) throw new Error('Account ID is required');
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+    console.log('🔑 Fetching account data for ID:', accountId);
     const { data: account, error } = await supabaseAdmin
       .from('google_ads_accounts')
       .select('customer_id, refresh_token, needs_reconnection')
       .eq('id', accountId)
       .single();
-    if (error || !account) throw new Error('Google Ads account not found.');
-    if (account.needs_reconnection) throw new Error('Account requires reconnection.');
+    if (error || !account) {
+      console.error('❌ Account fetch error:', error);
+      throw new Error('Google Ads account not found.');
+    }
+    if (account.needs_reconnection) {
+      console.error('🔄 Account needs reconnection');
+      throw new Error('Account requires reconnection.');
+    }
 
     const refreshToken = await decrypt(account.refresh_token, Deno.env.get('ENCRYPTION_KEY')!);
     const { access_token } = await getRefreshedToken(refreshToken, accountId, supabaseAdmin);
@@ -135,10 +144,12 @@ Deno.serve(async (req) => {
       },
     })) || [];
 
+    console.log('✅ Successfully fetched keywords:', keywords.length);
     return new Response(JSON.stringify({ keywords }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
+    console.error('❌ Error in get-keywords:', err);
     return new Response(JSON.stringify({ error: err.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
