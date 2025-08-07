@@ -8,6 +8,7 @@ import CampaignList from '@/components/CampaignList';
 import AdGroupsList from '@/components/AdGroupsList';
 import KeywordsList from '@/components/KeywordsList';
 import CampaignFilters from '@/components/CampaignFilters';
+import CampaignAnalysis from '@/components/CampaignAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -190,6 +191,8 @@ export default function Campaigns() {
         onApplyFilters={handleApplyFilters}
         isLoading={isApplyingFilters}
       />
+
+      <CampaignAnalysis />
 
       <Tabs defaultValue="campaigns" className="space-y-4">
         <TabsList>
