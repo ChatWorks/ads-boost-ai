@@ -14,6 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_conversations: {
+        Row: {
+          created_at: string
+          google_ads_account_id: string | null
+          id: string
+          is_archived: boolean
+          last_message_at: string | null
+          message_count: number
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          google_ads_account_id?: string | null
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string | null
+          message_count?: number
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          google_ads_account_id?: string | null
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string | null
+          message_count?: number
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_conversations_google_ads_account_id_fkey"
+            columns: ["google_ads_account_id"]
+            isOneToOne: false
+            referencedRelation: "google_ads_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          context_data: Json | null
+          conversation_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          processing_time_ms: number | null
+          role: string
+          sequence_number: number
+          token_count: number | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          context_data?: Json | null
+          conversation_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          processing_time_ms?: number | null
+          role: string
+          sequence_number: number
+          token_count?: number | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          context_data?: Json | null
+          conversation_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          processing_time_ms?: number | null
+          role?: string
+          sequence_number?: number
+          token_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       google_ads_accounts: {
         Row: {
           account_name: string | null
@@ -126,7 +226,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_conversations: {
+        Args: { target_user_id?: string; keep_count?: number }
+        Returns: number
+      }
+      get_conversation_context: {
+        Args: { conversation_uuid: string; message_limit?: number }
+        Returns: {
+          message_id: string
+          role: string
+          content: string
+          metadata: Json
+          context_data: Json
+          created_at: string
+          sequence_number: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
