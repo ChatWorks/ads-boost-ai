@@ -341,21 +341,64 @@ export default function Integrations() {
             </CardHeader>
           </Card>
 
-          {/* Active Accounts */}
+          {/* Enhanced Google Ads Integration Card */}
           <Card className="professional-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                Active Google Ads Accounts
-              </CardTitle>
-              <CardDescription>
-                These accounts are included in your dashboard and AI analysis.
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <span className="text-primary font-bold text-lg">📢</span>
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      Google Ads
+                      <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                        ✅ Connected
+                      </Badge>
+                    </CardTitle>
+                  </div>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              {/* Account Dropdown */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                  Account: {connectedAccounts.find(acc => acc.is_active)?.account_name} ({connectedAccounts.find(acc => acc.is_active)?.customer_id})
+                </label>
+                <select className="w-full p-2 border border-border rounded-lg bg-background text-foreground">
+                  {connectedAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.account_name} ({account.customer_id}) {account.is_active ? '← Selected' : ''}
+                    </option>
+                  ))}
+                  <option value="manual">Can't find your Account Id? Add manually</option>
+                </select>
+              </div>
+
+              {/* Sync Status */}
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm font-medium">Last synced: 2 minutes ago</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm">
+                    🔄 Sync Now
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    ⚙️ Configure
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                    🔌 Disconnect
+                  </Button>
+                </div>
+              </div>
+
+              {/* Account Details */}
               {connectedAccounts.filter(account => account.is_active).map((account) => (
                 <div key={account.id} className={`p-4 border rounded-lg ${
-                  account.needs_reconnection 
+                  account.needs_reconnection
                     ? 'bg-destructive/5 border-destructive/20' 
                     : 'bg-green-50 border-green-200'
                 }`}>
