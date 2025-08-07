@@ -35,3 +35,9 @@ verify_jwt = true
 
 [functions.get-keywords]
 verify_jwt = true
+
+[functions.ai-chat]
+verify_jwt = true
+
+[functions.get-account-context]
+verify_jwt = true
