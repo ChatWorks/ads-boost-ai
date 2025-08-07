@@ -8,6 +8,7 @@ import Layout from "@/components/Layout";
 import ChatDashboard from "./pages/ChatDashboard";
 import InsightsDashboard from "./pages/InsightsDashboard";
 import Integrations from "./pages/Integrations";
+import Data from "./pages/Data";
 import Campaigns from "./pages/Campaigns";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -85,12 +86,20 @@ const App = () => (
               } 
             />
             <Route 
+              path="/data" 
+              element={
+                <ProtectedRoute>
+                  <Data />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/campaigns" 
               element={
                 <ProtectedRoute>
                   <Campaigns />
                 </ProtectedRoute>
-              } 
+              }
             />
             <Route 
               path="/analytics" 
