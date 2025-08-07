@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       LIMIT ${limit}`;
 
     const customerId = account.customer_id.replace(/-/g, '');
-    const response = await fetch(
+    let response = await fetch(
       `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${customerId}/googleAds:searchStream`,
       {
         method: 'POST',
@@ -93,6 +93,28 @@ Deno.serve(async (req) => {
         }),
       }
     );
+
+    // token refresh fallback
+    if (response.status === 401) {
+      const newTokens = await getRefreshedToken(refreshToken, accountId, supabaseAdmin);
+      response = await fetch(
+        `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${customerId}/googleAds:searchStream`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${newTokens.access_token}`,
+            'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN')!,
+            'login-customer-id': customerId,
+          },
+          body: JSON.stringify({
+            query,
+            includeDrafts: true,
+            omitUnselectedResourceNames: false,
+          }),
+        }
+      );
+    }
 
     if (!response.ok) {
       const err = await response.text();
