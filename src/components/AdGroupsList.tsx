@@ -26,7 +26,6 @@ interface AdGroupsListProps {
 
 const AdGroupsList: React.FC<AdGroupsListProps> = ({ accountId, filters }) => {
   const [adGroups, setAdGroups] = useState<AdGroup[]>([]);
-  const [rawResponse, setRawResponse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -49,7 +48,6 @@ const AdGroupsList: React.FC<AdGroupsListProps> = ({ accountId, filters }) => {
       }
 
       setAdGroups(data.adGroups || []);
-      setRawResponse(data);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch ad groups';
       setError(errorMessage);
@@ -168,19 +166,6 @@ const AdGroupsList: React.FC<AdGroupsListProps> = ({ accountId, filters }) => {
           </Card>
         ))}
       </div>
-      
-      {rawResponse && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Raw Google Ads API Response</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-xs overflow-auto max-h-96 bg-muted p-4 rounded">
-              {JSON.stringify(rawResponse, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
