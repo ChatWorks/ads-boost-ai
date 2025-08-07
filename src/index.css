@@ -3,75 +3,52 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Innogo Professional Design System 
-All colors MUST be HSL. Professional theme for Google Ads AI agent.
-*/
+/* Clean Professional Design System - Match reference screenshots */
 
 @layer base {
   :root {
-    /* Base colors - Clean and professional */
+    /* Ultra clean base colors */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 9%;
     
-    /* Primary brand colors - Professional blue for CTA and highlights */
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
-    --primary-glow: 221 83% 65%;
+    /* Clean primary blue for send buttons and CTAs */
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
     
-    /* Secondary colors for subtle elements */
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
+    /* Ultra subtle secondary */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
     
-    /* Muted colors for backgrounds */
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Minimal muted colors */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
     
-    /* Accent colors */
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    /* Minimal accent */
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
     
     /* Destructive colors */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
     
-    /* Border and input colors */
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221 83% 53%;
+    /* Clean minimal borders */
+    --border: 0 0% 90%;
+    --input: 0 0% 96%;
+    --ring: 0 0% 9%;
     
-    /* Chart colors for dashboard */
-    --chart-1: 221 83% 53%;
-    --chart-2: 212 95% 68%;
-    --chart-3: 216 92% 79%;
-    --chart-4: 210 98% 78%;
-    --chart-5: 212 97% 87%;
-    
-    /* Sidebar - Dark professional theme */
-    --sidebar-background: 222.2 84% 4.9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 221 83% 53%;
-    
-    /* Professional gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(221 83% 65%));
-    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 40% 96%));
-    
-    /* Professional shadows */
-    --shadow-elegant: 0 10px 30px -10px hsl(221 83% 53% / 0.1);
-    --shadow-card: 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-    --shadow-sidebar: 2px 0 10px hsl(0 0% 0% / 0.1);
-    
-    /* Smooth animations */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-fast: all 0.15s ease-out;
+    /* Clean sidebar - light gray */
+    --sidebar-background: 0 0% 97%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 0 0% 9%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 9%;
 
     --radius: 0.5rem;
   }

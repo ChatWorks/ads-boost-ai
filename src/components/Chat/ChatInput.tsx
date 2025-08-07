@@ -32,25 +32,23 @@ export default function ChatInput({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-3">
-      <div className="flex-1 relative">
-        <Input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder={placeholder}
-          disabled={disabled}
-          className="pr-12 py-3 text-base"
-        />
-        <Button
-          type="submit"
-          size="sm"
-          disabled={!message.trim() || disabled}
-          className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
-      </div>
+    <form onSubmit={handleSubmit} className="relative">
+      <Input
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        onKeyPress={handleKeyPress}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full pr-12 py-4 text-base rounded-2xl border-border bg-background focus:ring-1 focus:ring-foreground/20"
+      />
+      <Button
+        type="submit"
+        size="sm"
+        disabled={!message.trim() || disabled}
+        className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 bg-foreground hover:bg-foreground/90 rounded-full"
+      >
+        <Send className="h-4 w-4" />
+      </Button>
     </form>
   );
 }

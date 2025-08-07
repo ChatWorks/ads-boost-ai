@@ -25,56 +25,34 @@ export default function ChatMessage({ message, onQuickAction }: ChatMessageProps
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-3xl ${isUser ? 'ml-12' : 'mr-12'}`}>
-        {/* Message Header */}
-        <div className={`flex items-center gap-2 mb-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
-          {!isUser && (
-            <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">🤖</span>
-            </div>
-          )}
-          <span className="text-sm font-medium">
-            {isUser ? '👤 You' : '🤖 Innogo'}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {format(message.timestamp, 'HH:mm')}
-          </span>
-          {isUser && (
-            <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">👤</span>
-            </div>
-          )}
-        </div>
-
-        {/* Message Bubble */}
+      <div className={`max-w-2xl ${isUser ? 'ml-16' : 'mr-16'}`}>
+        {/* Simple Message Bubble */}
         <div
           className={`
-            rounded-lg p-4 shadow-sm
+            rounded-2xl px-4 py-3 text-sm leading-relaxed
             ${isUser 
-              ? 'bg-primary text-primary-foreground ml-8' 
-              : 'bg-muted/70 text-foreground mr-8'
+              ? 'bg-foreground text-background' 
+              : 'bg-muted text-foreground'
             }
           `}
         >
-          <div className="prose prose-sm max-w-none">
-            {message.content.split('\n').map((line, index) => (
-              <p key={index} className={`${index === 0 ? 'mt-0' : 'mt-2'} mb-0 leading-relaxed`}>
-                {line}
-              </p>
-            ))}
-          </div>
+          {message.content.split('\n').map((line, index) => (
+            <p key={index} className={`${index === 0 ? 'mt-0' : 'mt-2'} mb-0`}>
+              {line}
+            </p>
+          ))}
         </div>
 
         {/* Quick Actions */}
         {message.actions && message.actions.length > 0 && (
-          <div className="mt-3 mr-8 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {message.actions.map((action, index) => (
               <Button
                 key={index}
                 variant="outline"
                 size="sm"
                 onClick={() => onQuickAction?.(action.action)}
-                className="text-xs h-8"
+                className="text-xs h-8 bg-background hover:bg-muted"
               >
                 <action.icon className="mr-1 h-3 w-3" />
                 {action.label}

@@ -171,34 +171,54 @@ export default function ChatDashboard() {
   }
 
   return (
-    <div className="h-screen flex bg-muted/30">
+    <div className="h-screen flex bg-background">
       {/* Left Sidebar - Recent Chats */}
-      <div className="w-80 bg-card border-r border-border flex flex-col">
-        {/* New Chat Button */}
-        <div className="p-4 border-b border-border">
-          <Button variant="outline" className="w-full justify-start">
+      <div className="w-60 bg-sidebar border-r border-sidebar-border flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-sidebar-border">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-6 h-6 bg-foreground rounded-sm flex items-center justify-center">
+              <span className="text-background font-bold text-xs">I</span>
+            </div>
+            <span className="font-semibold text-sidebar-foreground">Innogo</span>
+          </div>
+          <Button 
+            variant="default" 
+            className="w-full justify-start bg-foreground text-background hover:bg-foreground/90 border-0"
+          >
             <Plus className="mr-2 h-4 w-4" />
             New Chat
           </Button>
         </div>
 
-        {/* Recent Chats */}
-        <RecentChats />
+        {/* Recent Chats Section */}
+        <div className="flex-1 p-4">
+          <div className="text-xs text-sidebar-foreground/60 mb-3 uppercase tracking-wide">Recent Chats</div>
+          {/* Show recent chats or empty state */}
+          {chatMessages.length <= 1 ? (
+            <div className="text-center py-8">
+              <p className="text-sidebar-foreground/50 text-sm">No chat history!</p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {/* Recent chat items would go here */}
+              <div className="p-2 rounded text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent cursor-pointer">
+                How to optimize my campaigns?
+              </div>
+            </div>
+          )}
+        </div>
 
-        {/* Trial Info & User */}
-        <div className="mt-auto p-4 border-t border-border">
-          <div className="bg-muted rounded-lg p-3 mb-3">
-            <p className="text-sm font-medium">Trial ends in 10 days</p>
-            <p className="text-xs text-muted-foreground">Upgrade to continue using Innogo</p>
-          </div>
+        {/* Bottom User Section */}
+        <div className="p-4 border-t border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-primary-foreground font-medium text-sm">
+            <div className="w-8 h-8 bg-sidebar-foreground/10 rounded-full flex items-center justify-center">
+              <span className="text-sidebar-foreground font-medium text-sm">
                 {user?.user_metadata?.full_name?.charAt(0) || 'U'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {user?.user_metadata?.full_name || 'User'}
               </p>
             </div>
@@ -208,63 +228,85 @@ export default function ChatDashboard() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
-        <div className="p-6 border-b border-border bg-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold">
-                Hi {user?.user_metadata?.full_name || 'there'},
-              </h1>
-              <p className="text-muted-foreground">
-                What can I help you with?
-              </p>
-            </div>
+        {/* Clean Header */}
+        <div className="p-6 border-b border-border bg-background">
+          <div className="max-w-3xl mx-auto">
+            <h1 className="text-2xl font-medium text-center mb-2">
+              Ask Tara
+            </h1>
+            <p className="text-muted-foreground text-center text-sm">
+              Your AI Data & E-commerce Agent
+            </p>
             {selectedAccount && (
-              <Badge variant="secondary" className="bg-primary/10 text-primary">
-                {selectedAccount.account_name}
-              </Badge>
+              <div className="flex justify-end mt-4">
+                <Badge variant="secondary" className="text-xs">
+                  Connected integrations
+                </Badge>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {chatMessages.map((message) => (
-            <ChatMessage 
-              key={message.id} 
-              message={message} 
-              onQuickAction={handleQuickAction}
-            />
-          ))}
-        </div>
-
-        {/* Quick Action Buttons */}
-        <div className="px-6 py-4">
-          <div className="flex flex-wrap gap-2 mb-4">
-            {quickActionButtons.map((action, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickAction(action.action)}
-                className="text-xs"
-              >
-                <action.icon className="mr-1 h-3 w-3" />
-                {action.label}
-              </Button>
-            ))}
+        {/* Chat Messages Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-6 py-8">
+            {chatMessages.length === 0 || (chatMessages.length === 1 && !isConnected) ? (
+              /* Empty/Initial State */
+              <div className="text-center py-16">
+                <h2 className="text-4xl font-normal mb-4 text-foreground">
+                  What can I help you with?
+                </h2>
+              </div>
+            ) : (
+              /* Chat Messages */
+              <div className="space-y-6">
+                {chatMessages.map((message) => (
+                  <ChatMessage 
+                    key={message.id} 
+                    message={message} 
+                    onQuickAction={handleQuickAction}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Chat Input */}
-        <div className="p-6 border-t border-border bg-card">
-          <ChatInput 
-            onSendMessage={handleSendMessage}
-            placeholder={isConnected ? "Ask Innogo about your campaigns..." : "Ask me anything about Google Ads..."}
-          />
-          <p className="text-xs text-muted-foreground mt-2 text-center">
-            Innogo can make mistakes
-          </p>
+        {/* Input Area */}
+        <div className="border-t border-border bg-background">
+          <div className="max-w-3xl mx-auto p-6">
+            {/* Quick Action Buttons */}
+            {quickActionButtons.length > 0 && chatMessages.length <= 1 && (
+              <div className="mb-4">
+                <div className="flex gap-2 justify-center">
+                  {quickActionButtons.slice(0, 1).map((action, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickAction(action.action)}
+                      className="bg-foreground text-background hover:bg-foreground/90 border-0"
+                    >
+                      <action.icon className="mr-2 h-4 w-4" />
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <ChatInput 
+              onSendMessage={handleSendMessage}
+              placeholder="Ask Tara a question..."
+            />
+            <p className="text-xs text-muted-foreground mt-3 text-center">
+              Tara can make mistakes
+            </p>
+            <div className="flex justify-center mt-3 text-xs text-muted-foreground">
+              <span>Need help setting up your prompt? </span>
+              <button className="text-primary hover:underline ml-1">Click here✨</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
