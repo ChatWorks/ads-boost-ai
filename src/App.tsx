@@ -8,11 +8,12 @@ import Layout from "@/components/Layout";
 import ChatDashboard from "./pages/ChatDashboard";
 import InsightsDashboard from "./pages/InsightsDashboard";
 import InsightEmailSettings from "./pages/InsightEmailSettings";
-import Integrations from "./pages/Integrations";
+
 import Data from "./pages/Data";
 import Campaigns from "./pages/Campaigns";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -74,7 +75,7 @@ const App = () => (
               path="/integrations" 
               element={
                 <ProtectedRoute>
-                  <Integrations />
+                  <Navigate to="/settings" replace />
                 </ProtectedRoute>
               } 
             />
@@ -125,10 +126,7 @@ const App = () => (
               path="/settings" 
               element={
                 <ProtectedRoute>
-                  <div className="p-6">
-                    <h1 className="text-3xl font-bold">Settings</h1>
-                    <p className="text-muted-foreground">Configure your account and preferences</p>
-                  </div>
+                  <Settings />
                 </ProtectedRoute>
               } 
             />

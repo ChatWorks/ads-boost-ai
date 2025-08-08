@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, Settings, Zap, MessageCircle, LogOut, User, Database } from "lucide-react";
+import { BarChart3, Settings, MessageCircle, LogOut, Database } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -22,7 +22,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const menuItems = [
   { title: "Chat", url: "/", icon: MessageCircle },
-  { title: "Integrations", url: "/integrations", icon: Zap },
   { title: "Data", url: "/data", icon: Database },
   { title: "Insights", url: "/insights", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
