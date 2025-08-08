@@ -238,6 +238,8 @@ RESPONSE GUIDELINES:
 - Include potential impact estimates when possible
 - Ask clarifying questions when you need more context
 - Be concise but comprehensive
+- When RELEVANT_GOOGLE_ADS_DATA_JSON is present, treat it as the primary source of truth. If it conflicts with summaries (e.g., 0 campaigns) but contains keyword/ad group metrics, answer using that JSON.
+- Never claim that data is unavailable if the JSON includes relevant items (such as keywords, ad groups, or devices).
 
 `;
 
@@ -440,7 +442,7 @@ function selectRelevantContext(query: string, ctx: AccountContext | null) {
   if (!ctx) return null as any;
   const q = query.toLowerCase();
 
-  const wantsKeywords = /(keyword|zoekwoord|zoekwoorden|search term|terms|ctr|cpc|quality|kwaliteit|match|phrase|exact|broad)/i.test(q);
+  const wantsKeywords = /(keyword|zoekwoord|zoekwoorden|search term|terms|ctr|cpc|quality|kwaliteit|match|phrase|exact|broad|convers)/i.test(q);
   const wantsAdGroups = /(ad[- ]?group|advertentiegroep|adgroep)/i.test(q);
   const wantsCampaigns = /(campaign|campagne)/i.test(q);
   const wantsDevices = /(device|apparaat|mobile|desktop|tablet)/i.test(q);
@@ -470,9 +472,26 @@ function selectRelevantContext(query: string, ctx: AccountContext | null) {
   };
 
   const anyCtx: any = ctx as any;
-  const keywordsSrc = anyCtx.keywords || anyCtx.top_keywords || anyCtx.keyword_stats || [];
+  // Prefer full datasets if present; otherwise fall back to query_specific_data.top_keywords
+  let keywordsSrc = anyCtx.keywords || anyCtx.top_keywords || anyCtx.keyword_stats || [];
   const adgroupsSrc = anyCtx.ad_groups || anyCtx.adgroups || anyCtx.ad_group_stats || [];
   const campaignsSrc = anyCtx.campaigns || anyCtx.campaign_stats || [];
+
+  if ((!Array.isArray(keywordsSrc) || keywordsSrc.length === 0) && anyCtx.query_specific_data?.top_keywords) {
+    keywordsSrc = (anyCtx.query_specific_data.top_keywords as any[]).map((k: any) => ({
+      keyword: k.text ?? k.keyword ?? k.keyword_text ?? '',
+      match_type: k.match_type ?? null,
+      campaign_name: k.campaign_name ?? null,
+      ad_group_name: k.ad_group_name ?? null,
+      metrics: pickMetrics({
+        clicks: k.clicks,
+        impressions: k.impressions,
+        cost: k.cost,
+        conversions: k.conversions,
+        ctr: k.ctr
+      })
+    }));
+  }
 
   const result: any = {
     focus: [] as string[],
