@@ -67,8 +67,15 @@ serve(async (req) => {
       throw new Error('Invalid authentication');
     }
 
-    console.log('Processing chat request for user:', user.id);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseUser = createClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
 
+    console.log('Processing chat request for user:', user.id);
     // Get or create conversation
     let currentConversationId = conversation_id;
     if (!currentConversationId) {
@@ -106,7 +113,7 @@ serve(async (req) => {
     }
 
     // Get conversation history for context
-    const { data: conversationHistory, error: historyError } = await supabaseAdmin
+    const { data: conversationHistory, error: historyError } = await supabaseUser
       .rpc('get_conversation_context', {
         conversation_uuid: currentConversationId,
         message_limit: 10
@@ -121,11 +128,7 @@ serve(async (req) => {
     if (account_id) {
       try {
         // Create a user-scoped client so RLS and auth apply inside the invoked function
-        const supabaseUser = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-          { global: { headers: { Authorization: `Bearer ${token}` } } }
-        );
+        // supabaseUser client initialized above with user JWT; reusing it here.
 
         const { data: contextData, error: contextError } = await supabaseUser.functions.invoke(
           'get-account-context',
@@ -142,11 +145,14 @@ serve(async (req) => {
       }
     }
 
+    // Select minimal, query-relevant context to reduce tokens and improve precision
+    const relevantContext = selectRelevantContext(message, accountContext);
+
     // Build system prompt with context
     const systemPrompt = buildSystemPrompt(user, accountContext);
     
-    // Build conversation messages for OpenAI
-    const messages = buildConversationMessages(systemPrompt, conversationHistory || [], message, accountContext);
+    // Build conversation messages for OpenAI (includes relevant context JSON)
+    const messages = buildConversationMessages(systemPrompt, conversationHistory || [], message, accountContext, relevantContext);
 
     console.log('Sending request to OpenAI with', messages.length, 'messages');
 
@@ -269,11 +275,31 @@ function buildConversationMessages(
   systemPrompt: string, 
   history: any[], 
   currentMessage: string,
-  accountContext: AccountContext | null
+  accountContext: AccountContext | null,
+  relevantContext: any
 ): ChatMessage[] {
   const messages: ChatMessage[] = [
     { role: 'system', content: systemPrompt }
   ];
+
+  // Attach compact, query-relevant JSON context for precision
+  try {
+    const hasRelevant = !!(relevantContext && (
+      (relevantContext.data?.keywords?.length) ||
+      (relevantContext.data?.ad_groups?.length) ||
+      (relevantContext.data?.campaigns?.length) ||
+      relevantContext.summary
+    ));
+    if (hasRelevant) {
+      const json = JSON.stringify(relevantContext);
+      messages.push({
+        role: 'system',
+        content: `RELEVANT_GOOGLE_ADS_DATA_JSON:\n${json}`,
+      });
+    }
+  } catch (_) {
+    // ignore serialization issues
+  }
 
   // Add conversation history (reverse order since we get latest first)
   if (history && history.length > 0) {
@@ -407,4 +433,101 @@ async function saveAssistantMessage(
   } catch (error) {
     console.error('Error in saveAssistantMessage:', error);
   }
+}
+
+// Helper to select minimal, query-relevant context from accountContext
+function selectRelevantContext(query: string, ctx: AccountContext | null) {
+  if (!ctx) return null as any;
+  const q = query.toLowerCase();
+
+  const wantsKeywords = /(keyword|zoekwoord|zoekwoorden|search term|terms|ctr|cpc|quality|kwaliteit|match|phrase|exact|broad)/i.test(q);
+  const wantsAdGroups = /(ad[- ]?group|advertentiegroep|adgroep)/i.test(q);
+  const wantsCampaigns = /(campaign|campagne)/i.test(q);
+  const wantsDevices = /(device|apparaat|mobile|desktop|tablet)/i.test(q);
+
+  const metricsPref = /(convers|conversion)/i.test(q)
+    ? 'conversions'
+    : /(ctr)/i.test(q)
+    ? 'ctr'
+    : /(cost|spent|spend|kosten)/i.test(q)
+    ? 'cost'
+    : 'clicks';
+
+  const topN = 25;
+
+  const pickMetrics = (m: any) => ({
+    clicks: Number(m?.clicks ?? 0),
+    impressions: Number(m?.impressions ?? 0),
+    ctr: Number(m?.ctr ?? (m?.impressions ? (Number(m?.clicks ?? 0) / Number(m?.impressions)) * 100 : 0)),
+    cost: Number(m?.cost ?? (m?.cost_micros ? m.cost_micros / 1_000_000 : 0)),
+    conversions: Number(m?.conversions ?? 0),
+  });
+
+  const byMetric = (a: any, b: any) => {
+    const va = Number((a?.metrics ?? {})[metricsPref] ?? 0);
+    const vb = Number((b?.metrics ?? {})[metricsPref] ?? 0);
+    return vb - va;
+  };
+
+  const anyCtx: any = ctx as any;
+  const keywordsSrc = anyCtx.keywords || anyCtx.top_keywords || anyCtx.keyword_stats || [];
+  const adgroupsSrc = anyCtx.ad_groups || anyCtx.adgroups || anyCtx.ad_group_stats || [];
+  const campaignsSrc = anyCtx.campaigns || anyCtx.campaign_stats || [];
+
+  const result: any = {
+    focus: [] as string[],
+    metric: metricsPref,
+    top_n: topN,
+    totals: anyCtx.performance_snapshot?.totals ?? null,
+    date_range: anyCtx.performance_snapshot?.date_range ?? anyCtx.date_range ?? null,
+    data: {} as Record<string, any[]>,
+  };
+
+  const mapKeyword = (k: any) => ({
+    keyword: k?.keyword_text ?? k?.keyword ?? k?.text ?? '',
+    match_type: k?.match_type ?? null,
+    campaign_name: k?.campaign_name ?? null,
+    ad_group_name: k?.ad_group_name ?? k?.adgroup_name ?? null,
+    metrics: pickMetrics(k?.metrics ?? {}),
+  });
+
+  if (wantsKeywords && Array.isArray(keywordsSrc) && keywordsSrc.length) {
+    result.focus.push('keywords');
+    result.data.keywords = [...keywordsSrc].sort(byMetric).slice(0, topN).map(mapKeyword);
+  }
+
+  if (wantsAdGroups && Array.isArray(adgroupsSrc) && adgroupsSrc.length) {
+    result.focus.push('ad_groups');
+    result.data.ad_groups = [...adgroupsSrc].sort(byMetric).slice(0, topN).map((g: any) => ({
+      id: g?.id ?? g?.ad_group_id ?? null,
+      name: g?.name ?? g?.ad_group_name ?? null,
+      status: g?.status ?? null,
+      campaign_name: g?.campaign_name ?? null,
+      device: wantsDevices ? (g?.device ?? null) : undefined,
+      metrics: pickMetrics(g?.metrics ?? {}),
+    }));
+  }
+
+  if (wantsCampaigns && Array.isArray(campaignsSrc) && campaignsSrc.length) {
+    result.focus.push('campaigns');
+    result.data.campaigns = [...campaignsSrc].sort(byMetric).slice(0, topN).map((c: any) => ({
+      id: c?.id ?? c?.campaign_id ?? null,
+      name: c?.name ?? c?.campaign_name ?? null,
+      status: c?.status ?? null,
+      metrics: pickMetrics(c?.metrics ?? {}),
+    }));
+  }
+
+  if (result.focus.length === 0) {
+    result.focus.push('summary');
+    result.summary = anyCtx?.natural_language?.executive_summary ?? anyCtx?.natural_language?.performance_narrative ?? null;
+    if (Array.isArray(keywordsSrc) && keywordsSrc.length) {
+      result.data.keywords = [...keywordsSrc]
+        .sort((a: any, b: any) => Number(b?.metrics?.clicks ?? 0) - Number(a?.metrics?.clicks ?? 0))
+        .slice(0, 10)
+        .map(mapKeyword);
+    }
+  }
+
+  return result;
 }
