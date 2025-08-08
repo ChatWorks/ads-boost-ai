@@ -179,26 +179,41 @@ export function useChatManager(accountId?: string) {
     abortControllerRef.current = new AbortController();
 
     try {
-      // Call AI chat function
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: {
+      // Call AI chat function using direct fetch to ensure proper JSON body
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error('Missing auth session');
+      }
+
+      const projectRef = 'ijocgytumkinjhmgferk';
+      const url = `https://${projectRef}.functions.supabase.co/functions/v1/ai-chat`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
           message: message.trim(),
           conversation_id: state.currentConversation?.id,
           account_id: accountId,
-          stream: true
-        },
-        headers: {
-          'Content-Type': 'application/json'
-        }
+          // Use non-streaming for reliability with fetch/JSON handling
+          stream: false
+        })
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`AI chat failed: ${response.status} ${errText}`);
+      }
 
-      // Handle streaming response
-      if (data instanceof ReadableStream) {
-        await handleStreamingResponse(data);
-      } else if (data.message) {
-        // Non-streaming response
+      const data = await response.json();
+
+      // Non-streaming response
+      if (data.message) {
         const assistantMessage: ChatMessage = {
           id: `assistant-${Date.now()}`,
           content: data.message,
