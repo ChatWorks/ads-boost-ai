@@ -179,43 +179,19 @@ export function useChatManager(accountId?: string) {
     abortControllerRef.current = new AbortController();
 
     try {
-      // Call AI chat function using direct fetch to ensure proper JSON body
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-
-      if (!accessToken) {
-        throw new Error('Missing auth session');
-      }
-
-      const projectRef = 'ijocgytumkinjhmgferk';
-      const url = `https://${projectRef}.functions.supabase.co/functions/v1/ai-chat`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      // Call AI chat via Supabase client (handles auth and CORS)
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
           message: message.trim(),
           conversation_id: state.currentConversation?.id,
           account_id: accountId,
-          // Use non-streaming for reliability with fetch/JSON handling
           stream: false
-        })
+        }
       });
 
-      if (!response.ok) {
-        const errText = await response.text();
-        let serverMessage = `AI chat failed: ${response.status}`;
-        try {
-          const parsed = JSON.parse(errText);
-          if (parsed?.error) serverMessage = parsed.error;
-        } catch {}
-        throw new Error(serverMessage);
+      if (error) {
+        throw new Error(error.message || 'AI chat failed');
       }
-
-      const data = await response.json();
 
       // Non-streaming response
       if (data.message) {
