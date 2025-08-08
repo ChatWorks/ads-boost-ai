@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import ChatDashboard from "./pages/ChatDashboard";
 import InsightsDashboard from "./pages/InsightsDashboard";
+import InsightEmailSettings from "./pages/InsightEmailSettings";
 import Integrations from "./pages/Integrations";
 import Data from "./pages/Data";
 import Campaigns from "./pages/Campaigns";
@@ -82,6 +83,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <InsightsDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/insights/settings/:insightId" 
+              element={
+                <ProtectedRoute>
+                  <InsightEmailSettings />
                 </ProtectedRoute>
               } 
             />

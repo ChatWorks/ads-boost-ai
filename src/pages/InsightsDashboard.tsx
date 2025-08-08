@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +50,7 @@ interface AdsAccount {
 export default function InsightsDashboard() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | InsightConfig['category']>('all');
@@ -234,6 +236,26 @@ export default function InsightsDashboard() {
     },
   });
 
+  const sendTestEmail = async (metricsOverride?: InsightConfig['id'][]) => {
+    try {
+      if (!selectedAccountId) throw new Error('Selecteer eerst een account');
+      const metrics = metricsOverride ?? insights.filter((i) => i.enabled).map((i) => i.id);
+      if (metrics.length === 0) throw new Error('Selecteer minstens 1 insight');
+      const { error } = await supabase.functions.invoke('send-insights-test', {
+        body: {
+          accountId: selectedAccountId,
+          metrics,
+          frequency,
+          title,
+        },
+      });
+      if (error) throw error;
+      toast({ title: 'Testmail verzonden', description: 'Controleer je inbox.' });
+    } catch (e: any) {
+      toast({ title: 'Testmail mislukt', description: e.message, variant: 'destructive' });
+    }
+  };
+
   const filteredInsights = insights.filter((insight) => {
     const matchesSearch =
       insight.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -334,6 +356,9 @@ export default function InsightsDashboard() {
             <Button onClick={() => saveMutation.mutate()} disabled={!selectedAccountId || saveMutation.isPending}>
               <Save className="h-4 w-4 mr-2" /> Opslaan
             </Button>
+            <Button variant="outline" onClick={() => sendTestEmail()} disabled={!selectedAccountId}>
+              <Search className="h-4 w-4 mr-2" /> Stuur testmail
+            </Button>
             {subscriptionId && (
               <Button variant="outline" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending}>
                 <Trash2 className="h-4 w-4 mr-2" /> Verwijderen
@@ -391,7 +416,7 @@ export default function InsightsDashboard() {
         </CardHeader>
         <CardContent className="space-y-4">
           {filteredInsights.map((insight) => (
-            <InsightToggle key={insight.id} insight={insight} onToggle={handleToggleInsight} />
+            <InsightToggle key={insight.id} insight={insight} onToggle={handleToggleInsight} onConfigure={(id) => navigate(`/insights/settings/${id}?account=${selectedAccountId}`)} />
           ))}
 
           {filteredInsights.length === 0 && (
