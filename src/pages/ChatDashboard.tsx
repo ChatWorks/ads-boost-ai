@@ -314,7 +314,19 @@ export default function ChatDashboard() {
                   </select>
                 )}
                 
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-4 items-center">
+                  {/* Mini-debug info */}
+                  <div className="text-xs text-muted-foreground">
+                    {(() => {
+                      const acc = accounts.find(a => a.id === selectedAccountId);
+                      return (
+                        <span>
+                          User: {user?.id?.slice(0,8)}… · Account: {acc ? `${acc.account_name} (${acc.customer_id})` : '—'}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
                   {(contextLoading || refreshState.isRefreshing) && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Loader2 className="h-3 w-3 animate-spin" />

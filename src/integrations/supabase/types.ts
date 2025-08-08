@@ -305,6 +305,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          selected_google_ads_account_id: string | null
           updated_at: string
         }
         Insert: {
@@ -313,6 +314,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          selected_google_ads_account_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -321,9 +323,18 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          selected_google_ads_account_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_selected_google_ads_account_fk"
+            columns: ["selected_google_ads_account_id"]
+            isOneToOne: false
+            referencedRelation: "google_ads_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -75,6 +75,56 @@ serve(async (req) => {
       { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
 
+    // Helper to resolve effective account id
+    async function resolveAccountId(userId: string, requested?: string) {
+      if (requested) return requested;
+      const { data: prof } = await supabaseAdmin
+        .from('profiles')
+        .select('selected_google_ads_account_id')
+        .eq('id', userId)
+        .maybeSingle();
+      return prof?.selected_google_ads_account_id || null;
+    }
+
+    const resolvedAccountId = await resolveAccountId(user.id, account_id);
+
+    // Log resolution for observability
+    console.log('Account resolution', JSON.stringify({
+      user_id: user.id,
+      requested_account_id: account_id || null,
+      resolved_account_id: resolvedAccountId
+    }));
+
+    // Validate ownership and connection status when we have an account
+    if (resolvedAccountId) {
+      const { data: acc, error: accErr } = await supabaseAdmin
+        .from('google_ads_accounts')
+        .select('id, user_id, customer_id, account_name, connection_status')
+        .eq('id', resolvedAccountId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (accErr || !acc) {
+        return new Response(JSON.stringify({
+          error: 'Account not found or not accessible',
+          code: 'account_access_denied'
+        }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      if (acc.connection_status !== 'CONNECTED') {
+        return new Response(JSON.stringify({
+          error: 'Account is not connected',
+          code: 'account_not_connected'
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      console.log('Account resolved with customer_id', acc.customer_id);
+    } else {
+      return new Response(JSON.stringify({
+        error: 'No account specified and no default account selected',
+        code: 'missing_account_id'
+      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     console.log('Processing chat request for user:', user.id);
     // Get or create conversation
     let currentConversationId = conversation_id;
@@ -83,7 +133,7 @@ serve(async (req) => {
         .from('chat_conversations')
         .insert({
           user_id: user.id,
-          google_ads_account_id: account_id,
+          google_ads_account_id: resolvedAccountId,
           title: message.length > 50 ? message.substring(0, 47) + '...' : message
         })
         .select('id')
@@ -104,7 +154,7 @@ serve(async (req) => {
         user_id: user.id,
         role: 'user',
         content: message,
-        metadata: { account_id },
+        metadata: { account_id: resolvedAccountId },
       });
 
     if (userMsgError) {
@@ -132,7 +182,7 @@ serve(async (req) => {
 
         const { data: contextData, error: contextError } = await supabaseUser.functions.invoke(
           'get-account-context',
-          { body: { account_id, user_query: message, debug: 'full' } }
+          { body: { account_id: resolvedAccountId, user_query: message, debug: 'full' } }
         );
 
         if (contextError) {

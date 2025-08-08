@@ -58,11 +58,17 @@ serve(async (req) => {
       .single();
 
     if (accessError || !accountAccess) {
-      throw new Error('Account not found or access denied');
+      return new Response(JSON.stringify({
+        error: 'Account not found or access denied',
+        code: 'account_access_denied'
+      }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (accountAccess.connection_status !== 'CONNECTED') {
-      throw new Error('Account is not connected');
+      return new Response(JSON.stringify({
+        error: 'Account is not connected',
+        code: 'account_not_connected'
+      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Fetch consolidated data in parallel
@@ -126,6 +132,14 @@ serve(async (req) => {
       keywordsResult.value.data.keywords : [];
 
     console.log('Data fetched - Campaigns:', campaigns.length, 'AdGroups:', adGroups.length, 'Keywords:', keywords.length);
+
+    // Summary log for observability
+    console.log('Context summary', JSON.stringify({
+      user_id: user.id,
+      account_id,
+      date_range: (filters as any)?.dateRange ?? 'LAST_30_DAYS',
+      counts: { campaigns: campaigns.length, ad_groups: adGroups.length, keywords: keywords.length }
+    }));
 
     // Optional verbose logging per dataset
     const __debugFlag = (filters as any)?.debug ?? debug ?? false;

@@ -207,7 +207,12 @@ export function useChatManager(accountId?: string) {
 
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`AI chat failed: ${response.status} ${errText}`);
+        let serverMessage = `AI chat failed: ${response.status}`;
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed?.error) serverMessage = parsed.error;
+        } catch {}
+        throw new Error(serverMessage);
       }
 
       const data = await response.json();
@@ -241,10 +246,10 @@ export function useChatManager(accountId?: string) {
     } catch (error: any) {
       console.error('Error sending message:', error);
       
-      // Add error message to chat
+      // Add error message to chat with server details
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
-        content: "I'm sorry, I encountered an error while processing your message. Please try again.",
+        content: error?.message || "I'm sorry, I encountered an error while processing your message.",
         role: 'assistant',
         timestamp: new Date(),
         error: error.message
@@ -259,7 +264,7 @@ export function useChatManager(accountId?: string) {
 
       toast({
         title: "Chat Error",
-        description: "Failed to get AI response. Please try again.",
+        description: error?.message || "Failed to get AI response.",
         variant: "destructive"
       });
     }
