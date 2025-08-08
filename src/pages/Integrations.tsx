@@ -169,7 +169,7 @@ export default function Integrations() {
     
     try {
       console.log('📡 Calling supabase function: google-ads-connect');
-      const { data, error } = await supabase.functions.invoke('google-ads-connect');
+      const { data, error } = await supabase.functions.invoke('google-ads-connect', { body: { returnUrl: window.location.origin } });
       
       console.log('📊 Function response:', { data, error });
 

@@ -31,6 +31,15 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
+    // Optional return URL from the frontend to redirect back after OAuth
+    let returnUrl: string | null = null;
+    try {
+      const body = await req.json();
+      returnUrl = body?.returnUrl || null;
+    } catch (_e) {
+      // no body provided
+    }
+
     const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const redirectUri = `${supabaseUrl}/functions/v1/google-ads-callback`;
@@ -56,7 +65,9 @@ Deno.serve(async (req) => {
     ].join(' '));
     oauthUrl.searchParams.set('access_type', 'offline');
     oauthUrl.searchParams.set('prompt', 'consent');
-    oauthUrl.searchParams.set('state', user.id);
+    // Encode state with user id and return URL so callback can redirect correctly
+    const statePayload = btoa(JSON.stringify({ u: user.id, r: returnUrl || 'https://preview--ads-boost-ai.lovable.app' }));
+    oauthUrl.searchParams.set('state', statePayload);
 
     console.log('Generated OAuth URL for user:', user.id);
     console.log('Full OAuth URL:', oauthUrl.toString());

@@ -71,6 +71,17 @@ Deno.serve(async (req) => {
       throw new Error('Missing authorization code or state');
     }
 
+    // Decode state (may contain user id and return URL)
+    let userId: string | null = state;
+    let returnUrl = 'https://preview--ads-boost-ai.lovable.app';
+    try {
+      const parsed = JSON.parse(atob(state));
+      if (parsed?.u) userId = parsed.u;
+      if (parsed?.r) returnUrl = parsed.r;
+    } catch (_e) {
+      // state was plain user id; keep defaults
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -244,7 +255,7 @@ Deno.serve(async (req) => {
           const { error: insertError } = await supabaseClient
             .from('google_ads_accounts')
             .upsert({
-              user_id: state,
+              user_id: userId!,
               customer_id: customerDetail.customer_id,
               account_name: customerDetail.account_name,
               currency_code: customerDetail.currency_code,
@@ -282,7 +293,7 @@ Deno.serve(async (req) => {
       await supabaseClient
         .from('google_ads_accounts')
         .upsert({
-          user_id: state,
+          user_id: userId!,
           customer_id: 'oauth_connected_no_accounts',
           account_name: 'OAuth Connected - No Accessible Accounts',
           refresh_token: encryptedRefreshToken,
@@ -298,7 +309,7 @@ Deno.serve(async (req) => {
     console.log('✅ Successfully completed OAuth flow for user:', state);
 
     // Redirect back to frontend with success and account count
-    const frontendUrl = 'https://preview--ads-boost-ai.lovable.app';
+    const frontendUrl = returnUrl;
     const successParams = new URLSearchParams({
       success: 'true',
       accounts: customerDetails.length.toString(),
@@ -315,7 +326,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Error in google-ads-callback:', error);
-    const frontendUrl = 'https://preview--ads-boost-ai.lovable.app';
+    const frontendUrl = returnUrl;
     return new Response(null, {
       status: 302,
       headers: {
