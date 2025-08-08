@@ -268,9 +268,13 @@ export function useMultiAccountContext() {
 
       setAccounts(data || []);
       
-      // Auto-select first account if none selected
-      if (data && data.length > 0 && !selectedAccountId) {
-        setSelectedAccountId(data[0].id);
+      // Restore previously selected account from localStorage if available
+      const storedId = typeof window !== 'undefined' ? localStorage.getItem('selected_google_ads_account') : null;
+      const fallbackId = data && data.length > 0 ? data[0].id : null;
+      const nextId = data?.some((a: any) => a.id === storedId) ? storedId : fallbackId;
+
+      if (nextId && !selectedAccountId) {
+        setSelectedAccountId(nextId);
       }
     } catch (error) {
       console.error('Error loading user accounts:', error);
@@ -279,7 +283,14 @@ export function useMultiAccountContext() {
 
   const switchAccount = useCallback((accountId: string) => {
     setSelectedAccountId(accountId);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('selected_google_ads_account', accountId);
+      }
+    } catch {}
     aiContext.clearContext();
+    // Proactively refresh context for the newly selected account
+    aiContext.refreshContext(accountId).catch(() => {});
   }, [aiContext]);
 
   return {

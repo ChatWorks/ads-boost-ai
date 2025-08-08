@@ -52,7 +52,13 @@ export default function Data() {
       
       setAccounts(data || []);
       if (data && data.length > 0) {
-        setSelectedAccount(data[0]);
+        // Use persisted selection if available
+        let preferredId: string | null = null;
+        try {
+          preferredId = localStorage.getItem('selected_google_ads_account');
+        } catch {}
+        const next = data.find(acc => acc.id === preferredId) || data[0];
+        setSelectedAccount(next);
       }
     } catch (err: any) {
       console.error('Error fetching accounts:', err);
@@ -153,6 +159,7 @@ export default function Data() {
                 onChange={(e) => {
                   const account = accounts.find(acc => acc.id === e.target.value);
                   setSelectedAccount(account || null);
+                  try { localStorage.setItem('selected_google_ads_account', e.target.value); } catch {}
                 }}
               >
                 {accounts.map((account) => (
