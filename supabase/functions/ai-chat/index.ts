@@ -129,7 +129,7 @@ serve(async (req) => {
 
         const { data: contextData, error: contextError } = await supabaseUser.functions.invoke(
           'get-account-context',
-          { body: { account_id, user_query: message } }
+          { body: { account_id, user_query: message, debug: 'full' } }
         );
 
         if (contextError) {
