@@ -41,3 +41,9 @@ verify_jwt = true
 
 [functions.get-account-context]
 verify_jwt = true
+
+[functions.get-account-metrics]
+verify_jwt = true
+
+[functions.send-insights-emails]
+verify_jwt = false
