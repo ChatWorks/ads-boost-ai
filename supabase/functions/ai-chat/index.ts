@@ -48,7 +48,7 @@ serve(async (req) => {
     }
 
     // Parse request
-    const { message, conversation_id, account_id, stream = true, prompt }: ChatRequest & { prompt?: any } = await req.json();
+    const { message, conversation_id, account_id, stream = true }: ChatRequest = await req.json();
     
     if (!message?.trim()) {
       throw new Error('Message is required');
@@ -206,36 +206,21 @@ serve(async (req) => {
 
     console.log('Sending request to OpenAI with', messages.length, 'messages');
 
-    // Call OpenAI Responses API
-    const input = messages.map((m: any) => ({
-      role: m.role,
-      content: [{ type: m.role === 'system' ? 'text' : 'input_text', text: m.content }]
-    }));
-
-    const payload: any = {
-      model: 'gpt-4.1-2025-04-14',
-      input,
-      modalities: ['text'],
-      tools: [
-        {
-          type: 'code_interpreter',
-          container: { type: 'auto', file_ids: [] }
-        }
-      ],
-      max_output_tokens: 2048,
-      store: true,
-      reasoning: {},
-      stream
-    };
-
-    if (prompt) payload.prompt = prompt;
-    const openaiResponse = await fetch('https://api.openai.com/v1/responses', {
+    // Call OpenAI API
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        model: 'gpt-4o', // Using the most capable model
+        messages,
+        temperature: 0.7,
+        max_tokens: 1500,
+        stream,
+        response_format: { type: "text" }
+      }),
     });
 
     if (!openaiResponse.ok) {
@@ -250,29 +235,7 @@ serve(async (req) => {
     } else {
       // Handle non-streaming response
       const responseData = await openaiResponse.json();
-
-      // Extract text from Responses API result
-      let assistantMessage = '';
-      if (typeof responseData.output_text === 'string') {
-        assistantMessage = responseData.output_text;
-      } else if (Array.isArray(responseData.output)) {
-        for (const item of responseData.output) {
-          if (item?.type === 'output_text' && typeof item.text === 'string') {
-            assistantMessage += item.text;
-          } else if (item?.type === 'message' && Array.isArray(item.content)) {
-            for (const part of item.content) {
-              if (typeof part?.text === 'string') assistantMessage += part.text;
-            }
-          }
-        }
-      } else if (responseData?.message?.content) {
-        assistantMessage = responseData.message.content;
-      } else if (responseData?.choices?.[0]?.message?.content) {
-        assistantMessage = responseData.choices[0].message.content;
-      }
-      if (!assistantMessage) {
-        assistantMessage = 'I apologize, but I could not generate a response.';
-      }
+      const assistantMessage = responseData.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
 
       // Save assistant response to database
       await saveAssistantMessage(currentConversationId, user.id, assistantMessage, responseData.usage, accountContext);
@@ -424,7 +387,6 @@ async function handleStreamingResponse(
       }
 
       let assistantMessage = '';
-      let saved = false;
       const decoder = new TextDecoder();
 
       try {
@@ -436,59 +398,37 @@ async function handleStreamingResponse(
           const lines = chunk.split('\n');
 
           for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6);
-            if (!data) continue;
-
-            if (data === '[DONE]') {
-              // Chat Completions sentinel
-              if (assistantMessage.trim()) {
-                await saveAssistantMessage(conversationId, userId, assistantMessage, null, accountContext);
-                saved = true;
-              }
-              controller.close();
-              return;
-            }
-
-            try {
-              const parsed = JSON.parse(data);
-
-              // Responses API streaming events
-              if (parsed.type === 'response.output_text.delta' && parsed.delta) {
-                assistantMessage += parsed.delta;
-                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: 'content', content: parsed.delta, conversation_id: conversationId })}\n\n`));
-                continue;
-              }
-              if (parsed.type === 'response.completed') {
-                if (assistantMessage.trim() && !saved) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              
+              if (data === '[DONE]') {
+                // Save complete assistant message to database
+                if (assistantMessage.trim()) {
                   await saveAssistantMessage(conversationId, userId, assistantMessage, null, accountContext);
-                  saved = true;
                 }
                 controller.close();
                 return;
               }
 
-              // Fallback for Chat Completions streaming
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                assistantMessage += content;
-                // Send chunk to client
-                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({
-                  type: 'content',
-                  content,
-                  conversation_id: conversationId
-                })}\n\n`));
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content;
+                
+                if (content) {
+                  assistantMessage += content;
+                  // Send chunk to client
+                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({
+                    type: 'content',
+                    content,
+                    conversation_id: conversationId
+                  })}\n\n`));
+                }
+              } catch (e) {
+                // Skip malformed JSON
+                continue;
               }
-            } catch (_) {
-              // Skip malformed JSON
-              continue;
             }
           }
-        }
-
-        // Save if stream ended without explicit completion markers
-        if (assistantMessage.trim() && !saved) {
-          await saveAssistantMessage(conversationId, userId, assistantMessage, null, accountContext);
         }
       } catch (error) {
         console.error('Streaming error:', error);
