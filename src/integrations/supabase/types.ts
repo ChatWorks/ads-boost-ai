@@ -194,6 +194,110 @@ export type Database = {
           },
         ]
       }
+      insights_email_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          google_ads_account_id: string
+          id: string
+          metrics_snapshot: Json
+          sent_at: string
+          status: string
+          subscription_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          google_ads_account_id: string
+          id?: string
+          metrics_snapshot?: Json
+          sent_at?: string
+          status?: string
+          subscription_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          google_ads_account_id?: string
+          id?: string
+          metrics_snapshot?: Json
+          sent_at?: string
+          status?: string
+          subscription_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_log_account"
+            columns: ["google_ads_account_id"]
+            isOneToOne: false
+            referencedRelation: "google_ads_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_log_subscription"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "insights_email_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insights_email_subscriptions: {
+        Row: {
+          created_at: string
+          frequency: Database["public"]["Enums"]["email_frequency"]
+          google_ads_account_id: string
+          id: string
+          is_paused: boolean
+          last_sent_at: string | null
+          selected_metrics: string[]
+          send_time: string
+          time_zone: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          frequency?: Database["public"]["Enums"]["email_frequency"]
+          google_ads_account_id: string
+          id?: string
+          is_paused?: boolean
+          last_sent_at?: string | null
+          selected_metrics?: string[]
+          send_time?: string
+          time_zone?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          frequency?: Database["public"]["Enums"]["email_frequency"]
+          google_ads_account_id?: string
+          id?: string
+          is_paused?: boolean
+          last_sent_at?: string | null
+          selected_metrics?: string[]
+          send_time?: string
+          time_zone?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_subscription_account"
+            columns: ["google_ads_account_id"]
+            isOneToOne: false
+            referencedRelation: "google_ads_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company_name: string | null
@@ -244,7 +348,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      email_frequency: "daily" | "weekly" | "monthly"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -371,6 +475,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      email_frequency: ["daily", "weekly", "monthly"],
+    },
   },
 } as const
