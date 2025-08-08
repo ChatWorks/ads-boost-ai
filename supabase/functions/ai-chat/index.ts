@@ -120,16 +120,22 @@ serve(async (req) => {
     let accountContext: AccountContext | null = null;
     if (account_id) {
       try {
-        // Call our data consolidation service through edge function
-        const { data: contextData, error: contextError } = await supabaseAdmin.functions.invoke(
-          'get-account-context',
-          {
-            body: { account_id, user_query: message }
-          }
+        // Create a user-scoped client so RLS and auth apply inside the invoked function
+        const supabaseUser = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          { global: { headers: { Authorization: `Bearer ${token}` } } }
         );
 
-        if (!contextError && contextData) {
-          accountContext = contextData;
+        const { data: contextData, error: contextError } = await supabaseUser.functions.invoke(
+          'get-account-context',
+          { body: { account_id, user_query: message } }
+        );
+
+        if (contextError) {
+          console.warn('get-account-context error:', contextError);
+        } else if (contextData) {
+          accountContext = contextData as AccountContext;
         }
       } catch (error) {
         console.warn('Could not fetch account context:', error);
