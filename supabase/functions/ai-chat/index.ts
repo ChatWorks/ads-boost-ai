@@ -48,7 +48,7 @@ serve(async (req) => {
     }
 
     // Parse request
-    const { message, conversation_id, account_id, stream = true }: ChatRequest = await req.json();
+    const { message, conversation_id, account_id, stream = true, prompt }: ChatRequest & { prompt?: any } = await req.json();
     
     if (!message?.trim()) {
       throw new Error('Message is required');
@@ -209,12 +209,13 @@ serve(async (req) => {
     // Call OpenAI Responses API
     const input = messages.map((m: any) => ({
       role: m.role,
-      content: [{ type: 'text', text: m.content }]
+      content: [{ type: m.role === 'system' ? 'text' : 'input_text', text: m.content }]
     }));
 
     const payload: any = {
       model: 'gpt-4.1-2025-04-14',
       input,
+      modalities: ['text'],
       tools: [
         {
           type: 'code_interpreter',
@@ -227,6 +228,7 @@ serve(async (req) => {
       stream
     };
 
+    if (prompt) payload.prompt = prompt;
     const openaiResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
