@@ -172,7 +172,7 @@ serve(async (req) => {
       account_name: accountAccess.account_name,
       customer_id: accountAccess.customer_id,
       total_campaigns: campaigns.length,
-      active_campaigns: campaigns.filter((c: any) => c.campaign?.status === 'ENABLED').length,
+      active_campaigns: campaigns.filter((c: any) => (c.status ?? c.campaign?.status) === 'ENABLED').length,
       connection_status: accountAccess.connection_status,
       data_freshness: getDataFreshness(accountAccess.last_successful_fetch)
     };
@@ -225,7 +225,7 @@ serve(async (req) => {
 });
 
 function buildPerformanceSnapshot(campaigns: any[]) {
-  const activeCampaigns = campaigns.filter((c: any) => c.campaign?.status === 'ENABLED');
+  const activeCampaigns = campaigns.filter((c: any) => getStatus(c) === 'ENABLED');
   
   if (activeCampaigns.length === 0) {
     return {
@@ -240,22 +240,29 @@ function buildPerformanceSnapshot(campaigns: any[]) {
     };
   }
 
-  const totals = activeCampaigns.reduce((acc: any, campaign: any) => ({
-    spend: acc.spend + (campaign.metrics?.cost || 0),
-    clicks: acc.clicks + (campaign.metrics?.clicks || 0),
-    impressions: acc.impressions + (campaign.metrics?.impressions || 0),
-    conversions: acc.conversions + (campaign.metrics?.conversions || 0)
-  }), { spend: 0, clicks: 0, impressions: 0, conversions: 0 });
+  const totals = activeCampaigns.reduce((acc: any, campaign: any) => {
+    const spend = costUSD(campaign.metrics);
+    const clicks = num(campaign.metrics?.clicks);
+    const impressions = num(campaign.metrics?.impressions);
+    const conversions = num(campaign.metrics?.conversions);
+
+    return {
+      spend: acc.spend + spend,
+      clicks: acc.clicks + clicks,
+      impressions: acc.impressions + impressions,
+      conversions: acc.conversions + conversions
+    };
+  }, { spend: 0, clicks: 0, impressions: 0, conversions: 0 });
 
   const topCampaigns = activeCampaigns
-    .sort((a: any, b: any) => (b.metrics?.conversions || 0) - (a.metrics?.conversions || 0))
+    .sort((a: any, b: any) => num(b.metrics?.conversions) - num(a.metrics?.conversions))
     .slice(0, 5)
     .map((campaign: any) => ({
-      name: campaign.campaign?.name || '',
-      spend: campaign.metrics?.cost || 0,
-      conversions: campaign.metrics?.conversions || 0,
-      ctr: campaign.metrics?.ctr || 0,
-      status: campaign.campaign?.status || ''
+      name: getName(campaign),
+      spend: costUSD(campaign.metrics),
+      conversions: num(campaign.metrics?.conversions),
+      ctr: num(campaign.metrics?.ctr),
+      status: getStatus(campaign)
     }));
 
   return {
@@ -271,20 +278,21 @@ function buildPerformanceSnapshot(campaigns: any[]) {
 }
 
 function generateInsights(campaigns: any[], adGroups: any[], keywords: any[]) {
-  const key_opportunities = [];
-  const main_concerns = [];
+  const key_opportunities: string[] = [];
+  const main_concerns: string[] = [];
 
   // Analyze campaigns for opportunities and concerns
-  const activeCampaigns = campaigns.filter((c: any) => c.campaign?.status === 'ENABLED');
+  const activeCampaigns = campaigns.filter((c: any) => getStatus(c) === 'ENABLED');
+
   const lowPerformingCampaigns = activeCampaigns.filter((c: any) => {
-    const cost = c.metrics?.cost || 0;
-    const conversions = c.metrics?.conversions || 0;
+    const cost = costUSD(c.metrics);
+    const conversions = num(c.metrics?.conversions);
     return cost > 100 && conversions === 0;
   });
 
   const highPerformingCampaigns = activeCampaigns.filter((c: any) => {
-    const clicks = c.metrics?.clicks || 0;
-    const conversions = c.metrics?.conversions || 0;
+    const clicks = num(c.metrics?.clicks);
+    const conversions = num(c.metrics?.conversions);
     return clicks > 0 && conversions / clicks > 0.05;
   });
 
@@ -297,7 +305,7 @@ function generateInsights(campaigns: any[], adGroups: any[], keywords: any[]) {
   }
 
   // Keyword analysis
-  const highVolumeKeywords = keywords.filter((k: any) => (k.metrics?.clicks || 0) > 100);
+  const highVolumeKeywords = keywords.filter((k: any) => num(k.metrics?.clicks) > 100);
   if (highVolumeKeywords.length > 0) {
     key_opportunities.push(`${highVolumeKeywords.length} high-volume keywords identified for optimization`);
   }
@@ -311,55 +319,55 @@ function generateInsights(campaigns: any[], adGroups: any[], keywords: any[]) {
 }
 
 function generateRecommendations(campaigns: any[], adGroups: any[], keywords: any[], userQuery?: string) {
-  const recommendations = [];
+  const recommendations: any[] = [];
 
   // Budget recommendations
-  const activeCampaigns = campaigns.filter((c: any) => c.campaign?.status === 'ENABLED');
-  
+  const activeCampaigns = campaigns.filter((c: any) => getStatus(c) === 'ENABLED');
+
   activeCampaigns.forEach((campaign: any) => {
-    const cost = campaign.metrics?.cost || 0;
-    const conversions = campaign.metrics?.conversions || 0;
-    const clicks = campaign.metrics?.clicks || 0;
-    
+    const cost = costUSD(campaign.metrics);
+    const conversions = num(campaign.metrics?.conversions);
+    const clicks = num(campaign.metrics?.clicks);
+
     if (cost > 0 && conversions > 0) {
-      const conversionRate = conversions / clicks;
-      const costPerConversion = cost / conversions;
-      
+      const conversionRate = clicks > 0 ? conversions / clicks : 0;
+      const costPerConversion = conversions > 0 ? cost / conversions : 0;
+
       if (conversionRate > 0.05 && costPerConversion < 50) {
         recommendations.push({
           type: 'budget',
           priority: 'high',
-          title: `Increase budget for ${campaign.campaign?.name}`,
+          title: `Increase budget for ${getName(campaign)}`,
           description: `High conversion rate (${(conversionRate * 100).toFixed(1)}%) with low cost per conversion ($${costPerConversion.toFixed(2)})`,
           potential_impact: `Could increase conversions by 20-30%`,
           confidence_score: 0.85,
-          affected_entity: campaign.campaign?.name
+          affected_entity: getName(campaign)
         });
       }
     } else if (cost > 100 && conversions === 0) {
       recommendations.push({
         type: 'campaign',
         priority: 'high',
-        title: `Review underperforming campaign: ${campaign.campaign?.name}`,
+        title: `Review underperforming campaign: ${getName(campaign)}`,
         description: `High spend ($${cost.toFixed(2)}) with no conversions`,
         potential_impact: `Could save $${(cost * 0.5).toFixed(2)} in wasted spend`,
         confidence_score: 0.75,
-        affected_entity: campaign.campaign?.name
+        affected_entity: getName(campaign)
       });
     }
   });
 
   // Keyword recommendations
   const topKeywords = keywords
-    .filter((k: any) => (k.metrics?.clicks || 0) > 10)
-    .sort((a: any, b: any) => (b.metrics?.clicks || 0) - (a.metrics?.clicks || 0))
+    .filter((k: any) => num(k.metrics?.clicks) > 10)
+    .sort((a: any, b: any) => num(b.metrics?.clicks) - num(a.metrics?.clicks))
     .slice(0, 5);
 
   topKeywords.forEach((keyword: any) => {
-    const clicks = keyword.metrics?.clicks || 0;
-    const conversions = keyword.metrics?.conversions || 0;
-    const cost = keyword.metrics?.cost || 0;
-    
+    const clicks = num(keyword.metrics?.clicks);
+    const conversions = num(keyword.metrics?.conversions);
+    const cost = costUSD(keyword.metrics);
+
     if (clicks > 0) {
       const conversionRate = conversions / clicks;
       if (conversionRate < 0.01 && cost > 50) {
@@ -399,14 +407,14 @@ function prepareQuerySpecificData(campaigns: any[], adGroups: any[], keywords: a
   const queryLower = query.toLowerCase();
   
   if (queryLower.includes('budget') || queryLower.includes('spend')) {
-    const totalSpend = campaigns.reduce((sum: number, c: any) => sum + (c.metrics?.cost || 0), 0);
+    const totalSpend = campaigns.reduce((sum: number, c: any) => sum + costUSD(c.metrics), 0);
     return {
       type: 'budget_analysis',
       total_spend: totalSpend,
       campaign_spend: campaigns.map((c: any) => ({
-        name: c.campaign?.name,
-        spend: c.metrics?.cost || 0,
-        status: c.campaign?.status
+        name: getName(c),
+        spend: costUSD(c.metrics),
+        status: getStatus(c)
       })).filter((c: any) => c.spend > 0)
     };
   }
@@ -416,14 +424,14 @@ function prepareQuerySpecificData(campaigns: any[], adGroups: any[], keywords: a
       type: 'keyword_analysis',
       total_keywords: keywords.length,
       top_keywords: keywords
-        .filter((k: any) => (k.metrics?.clicks || 0) > 0)
-        .sort((a: any, b: any) => (b.metrics?.clicks || 0) - (a.metrics?.clicks || 0))
+        .filter((k: any) => num(k.metrics?.clicks) > 0)
+        .sort((a: any, b: any) => num(b.metrics?.clicks) - num(a.metrics?.clicks))
         .slice(0, 10)
         .map((k: any) => ({
           text: k.ad_group_criterion?.keyword?.text,
-          clicks: k.metrics?.clicks,
-          conversions: k.metrics?.conversions,
-          cost: k.metrics?.cost
+          clicks: num(k.metrics?.clicks),
+          conversions: num(k.metrics?.conversions),
+          cost: costUSD(k.metrics)
         }))
     };
   }
@@ -451,4 +459,32 @@ function calculateDataCompleteness(campaigns: any[], adGroups: any[], keywords: 
   if (keywords.length > 0) score += 0.3;
   
   return score;
+}
+
+// Helper normalization utilities
+function num(v: any): number {
+  if (v === null || v === undefined) return 0;
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  if (typeof v === 'string') {
+    const n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+  return 0;
+}
+
+function getStatus(entity: any): string {
+  return (entity?.status ?? entity?.campaign?.status ?? '') as string;
+}
+
+function getName(entity: any): string {
+  return (entity?.name ?? entity?.campaign?.name ?? '') as string;
+}
+
+function costUSD(metrics: any): number {
+  if (!metrics) return 0;
+  const direct = metrics.cost ?? metrics.cost_value ?? metrics.total_cost;
+  const directNum = num(direct);
+  if (directNum > 0) return directNum;
+  const micros = num(metrics.cost_micros ?? metrics.costMicros);
+  return micros > 0 ? micros / 1_000_000 : 0;
 }
