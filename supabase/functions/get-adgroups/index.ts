@@ -76,13 +76,16 @@ Deno.serve(async (req) => {
     );
     console.log('✅ Got fresh access token');
 
-    // Metrics: zorg dat cost_micros altijd mee komt
+    // Metrics: allow full field paths; only prefix plain metric names
     const baseMetrics = ['impressions', 'clicks', 'cost_micros'];
-    const selectedMetrics = filters?.metrics?.slice() || baseMetrics;
-    if (!selectedMetrics.includes('cost_micros')) {
-      selectedMetrics.push('cost_micros');
-    }
-    const metricsQuery = selectedMetrics.map(m => `metrics.${m}`).join(', ');
+    const incoming = (filters?.metrics?.slice() || baseMetrics);
+    const normalizedFields = incoming.map((f: string) => {
+      if (!f) return '';
+      const trimmed = f.trim();
+      if (trimmed.startsWith('metrics.') || trimmed.includes('.')) return trimmed; // already full path
+      return `metrics.${trimmed}`;
+    }).filter(Boolean);
+    const metricsQuery = normalizedFields.join(', ');
 
     // Datumfilter
     let dateCondition = 'segments.date DURING LAST_30_DAYS';

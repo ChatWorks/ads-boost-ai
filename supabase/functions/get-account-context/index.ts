@@ -69,60 +69,49 @@ serve(async (req) => {
       supabaseAdmin.functions.invoke('get-campaigns', {
         body: { 
           accountId: account_id,
-          filters: {
-            ...filters,
-            metrics: [
-              'campaign.id',
-              'campaign.name', 
-              'campaign.status',
-              'metrics.clicks',
-              'metrics.impressions',
-              'metrics.cost_micros',
-              'metrics.conversions',
-              'metrics.ctr',
-              'metrics.average_cpc'
-            ]
-          }
+           filters: {
+             ...filters,
+             metrics: [
+               'metrics.clicks',
+               'metrics.impressions',
+               'metrics.cost_micros',
+               'metrics.conversions',
+               'metrics.ctr',
+               'metrics.average_cpc'
+             ]
+           }
         }
       }),
       supabaseAdmin.functions.invoke('get-adgroups', {
         body: { 
           accountId: account_id,
-          filters: {
-            ...filters,
-            metrics: [
-              'ad_group.id',
-              'ad_group.name',
-              'campaign.name',
-              'ad_group.status',
-              'metrics.clicks',
-              'metrics.impressions',
-              'metrics.cost_micros',
-              'metrics.conversions',
-              'metrics.ctr',
-              'metrics.average_cpc'
-            ]
-          }
+           filters: { 
+             ...filters,
+             metrics: [
+               'metrics.clicks',
+               'metrics.impressions',
+               'metrics.cost_micros',
+               'metrics.conversions',
+               'metrics.ctr',
+               'metrics.average_cpc'
+             ]
+           }
         }
       }),
       supabaseAdmin.functions.invoke('get-keywords', {
         body: { 
           accountId: account_id,
-          filters: {
-            ...filters,
-            metrics: [
-              'ad_group_criterion.keyword.text',
-              'ad_group_criterion.keyword.match_type',
-              'campaign.name',
-              'ad_group.name',
-              'metrics.clicks',
-              'metrics.impressions',
-              'metrics.cost_micros',
-              'metrics.conversions',
-              'metrics.ctr',
-              'metrics.average_cpc'
-            ]
-          }
+           filters: { 
+             ...filters,
+             metrics: [
+               'metrics.clicks',
+               'metrics.impressions',
+               'metrics.cost_micros',
+               'metrics.conversions',
+               'metrics.ctr',
+               'metrics.average_cpc'
+             ]
+           }
         }
       })
     ]);

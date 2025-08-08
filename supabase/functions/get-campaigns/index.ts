@@ -50,11 +50,16 @@ Deno.serve(async (req) => {
     const refreshToken = await decrypt(account.refresh_token, Deno.env.get('ENCRYPTION_KEY')!);
     const { access_token } = await getRefreshedToken(refreshToken, accountId, supabaseAdmin);
 
-    // metrics & ensure cost_micros altijd aanwezig
+    // metrics: accept full field paths and plain metric names
     const defaultMetrics = ['impressions', 'clicks', 'cost_micros', 'ctr', 'conversions'];
-    const selectedMetrics = filters?.metrics?.slice() || defaultMetrics;
-    if (!selectedMetrics.includes('cost_micros')) selectedMetrics.push('cost_micros');
-    const metricsQuery = selectedMetrics.map(m => `metrics.${m}`).join(', ');
+    const incoming = filters?.metrics?.slice() || defaultMetrics;
+    const normalized = incoming.map((f: string) => {
+      if (!f) return '';
+      const t = f.trim();
+      if (t.startsWith('metrics.') || t.includes('.')) return t; // already a full path or non-metric field
+      return `metrics.${t}`;
+    }).filter(Boolean);
+    const metricsQuery = normalized.join(', ');
 
     // datum
     let dateCondition = 'segments.date DURING LAST_30_DAYS';
