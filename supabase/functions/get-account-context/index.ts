@@ -201,6 +201,10 @@ serve(async (req) => {
       insights_summary,
       actionable_recommendations,
       natural_language,
+      // Include raw datasets so the AI can answer specific queries (campaigns/ad groups/keywords)
+      campaigns,
+      ad_groups: adGroups,
+      keywords,
       query_specific_data,
       data_timestamp: new Date().toISOString(),
       data_completeness: calculateDataCompleteness(campaigns, adGroups, keywords)
