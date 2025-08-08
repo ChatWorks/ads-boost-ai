@@ -17,6 +17,7 @@ interface ContextRequest {
   account_id: string;
   user_query?: string;
   filters?: any;
+  debug?: 'full' | 'summary' | number | boolean;
 }
 
 serve(async (req) => {
@@ -27,7 +28,7 @@ serve(async (req) => {
 
   try {
     // Parse request
-    const { account_id, user_query, filters = {} }: ContextRequest = await req.json();
+    const { account_id, user_query, filters = {}, debug }: ContextRequest = await req.json();
     
     if (!account_id) {
       throw new Error('account_id is required');
@@ -125,6 +126,32 @@ serve(async (req) => {
       keywordsResult.value.data.keywords : [];
 
     console.log('Data fetched - Campaigns:', campaigns.length, 'AdGroups:', adGroups.length, 'Keywords:', keywords.length);
+
+    // Optional verbose logging per dataset
+    const __debugFlag = (filters as any)?.debug ?? debug ?? false;
+    if (__debugFlag) {
+      const mode = __debugFlag === 'full' || __debugFlag === true
+        ? 'full'
+        : (__debugFlag === 'summary' ? 'summary' : (typeof __debugFlag === 'number' ? __debugFlag : 'summary'));
+
+      console.log('🟡 Debug mode enabled for account context', JSON.stringify({ user_id: user.id, account_id, mode }));
+
+      const logChunks = (name: string, arr: any[], chunkSize = 50) => {
+        if (mode === 'summary') {
+          console.log(`🔹 ${name} sample (up to 5)`, JSON.stringify(arr.slice(0, 5)));
+          return;
+        }
+        const items = typeof mode === 'number' ? arr.slice(0, mode) : arr;
+        for (let i = 0; i < items.length; i += chunkSize) {
+          const end = Math.min(i + chunkSize - 1, items.length - 1);
+          console.log(`🔹 ${name} [${i}-${end}]`, JSON.stringify(items.slice(i, i + chunkSize)));
+        }
+      };
+
+      logChunks('Campaigns payload', campaigns);
+      logChunks('AdGroups payload', adGroups);
+      logChunks('Keywords payload', keywords);
+    }
 
     // Build account summary
     const account_summary = {
