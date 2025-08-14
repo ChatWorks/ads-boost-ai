@@ -22,7 +22,9 @@ async function getRefreshedToken(refreshToken: string, accountId: string) {
   
   console.log('🔧 OAuth Configuration:');
   console.log('Client ID present:', !!clientId);
+  console.log('Client ID value:', clientId ? `${clientId.substring(0, 10)}...` : 'MISSING');
   console.log('Client Secret present:', !!clientSecret);
+  console.log('Client Secret value:', clientSecret ? `${clientSecret.substring(0, 10)}...` : 'MISSING');
   console.log('Refresh token present:', !!refreshToken);
   console.log('Refresh token length:', refreshToken?.length || 0);
 
