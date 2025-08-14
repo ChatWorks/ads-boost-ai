@@ -24,18 +24,22 @@ import {
   TrendingUp, 
   ShoppingCart, 
   Save,
-  Trash2
+  Trash2,
+  Target,
+  Trophy,
+  Users,
+  Radio
 } from 'lucide-react';
 import InsightToggle from '@/components/Insights/InsightToggle';
 import { toast } from '@/hooks/use-toast';
 
 interface InsightConfig {
-  id: 'impressions' | 'clicks' | 'conversions' | 'spend' | 'cpm' | 'ctr';
+  id: 'impressions' | 'clicks' | 'conversions' | 'spend' | 'cpm' | 'ctr' | 'roas' | 'romi' | 'search_impression_share' | 'top_performing_campaigns' | 'frequency' | 'reach';
   name: string;
   icon: any;
   description: string;
   enabled: boolean;
-  category: 'performance' | 'budget' | 'conversion';
+  category: 'performance' | 'budget' | 'conversion' | 'reach' | 'insights';
 }
 
 interface AdsAccount {
@@ -113,6 +117,54 @@ export default function InsightsDashboard() {
       description: 'Click-through rate performance alerts',
       enabled: false,
       category: 'performance',
+    },
+    {
+      id: 'roas',
+      name: 'ROAS (Return on Ad Spend)',
+      icon: Target,
+      description: 'Return on advertising spend performance tracking',
+      enabled: false,
+      category: 'conversion',
+    },
+    {
+      id: 'romi',
+      name: 'ROMI (Return on Marketing Investment)',
+      icon: TrendingUp,
+      description: 'Marketing investment return percentage monitoring',
+      enabled: false,
+      category: 'conversion',
+    },
+    {
+      id: 'search_impression_share',
+      name: 'Search Impression Share',
+      icon: BarChart3,
+      description: 'Track search impression share performance',
+      enabled: false,
+      category: 'performance',
+    },
+    {
+      id: 'top_performing_campaigns',
+      name: 'Top Performing Campaigns',
+      icon: Trophy,
+      description: 'Insights on best performing campaigns and recommendations',
+      enabled: false,
+      category: 'insights',
+    },
+    {
+      id: 'frequency',
+      name: 'Ad Frequency',
+      icon: Radio,
+      description: 'Monitor how often ads are shown to the same users',
+      enabled: false,
+      category: 'reach',
+    },
+    {
+      id: 'reach',
+      name: 'Reach',
+      icon: Users,
+      description: 'Track unique user reach and audience expansion',
+      enabled: false,
+      category: 'reach',
     },
   ]);
 
@@ -391,6 +443,8 @@ export default function InsightsDashboard() {
             <SelectItem value="performance">Performance</SelectItem>
             <SelectItem value="budget">Budget</SelectItem>
             <SelectItem value="conversion">Conversion</SelectItem>
+            <SelectItem value="reach">Reach</SelectItem>
+            <SelectItem value="insights">Insights</SelectItem>
           </SelectContent>
         </Select>
       </div>

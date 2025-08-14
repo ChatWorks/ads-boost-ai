@@ -51,7 +51,18 @@ Deno.serve(async (req) => {
     const { access_token } = await getRefreshedToken(refreshToken, accountId, supabaseAdmin);
 
     // metrics: accept full field paths and plain metric names
-    const defaultMetrics = ['impressions', 'clicks', 'cost_micros', 'ctr', 'conversions'];
+    const defaultMetrics = [
+      'impressions', 
+      'clicks', 
+      'cost_micros', 
+      'ctr', 
+      'conversions',
+      'conversion_value',
+      'value_per_conversion',
+      'search_impression_share',
+      'absolute_top_impression_share',
+      'top_impression_share'
+    ];
     const incoming = filters?.metrics?.slice() || defaultMetrics;
     const normalized = incoming.map((f: string) => {
       if (!f) return '';
@@ -137,10 +148,24 @@ Deno.serve(async (req) => {
         cost: (row.metrics.cost_micros || 0) / 1e6,
         average_cpc: (row.metrics.average_cpc || 0) / 1e6,
         cost_per_conversion: (row.metrics.cost_per_conversion || 0) / 1e6,
+        conversion_value_dollars: (row.metrics.conversion_value || 0) / 1e6,
+        value_per_conversion_dollars: (row.metrics.value_per_conversion || 0) / 1e6,
         conversion_rate:
           row.metrics.clicks > 0 && row.metrics.conversions > 0
             ? row.metrics.conversions / row.metrics.clicks
             : 0,
+        // Calculated ROAS (Return on Ad Spend)
+        roas: row.metrics.conversion_value > 0 && row.metrics.cost_micros > 0
+          ? (row.metrics.conversion_value / row.metrics.cost_micros)
+          : 0,
+        // Calculated ROMI (Return on Marketing Investment) - percentage
+        romi: row.metrics.conversion_value > 0 && row.metrics.cost_micros > 0
+          ? ((row.metrics.conversion_value - row.metrics.cost_micros) / row.metrics.cost_micros) * 100
+          : 0,
+        // CPM (Cost per 1000 impressions)
+        cpm: row.metrics.impressions > 0 && row.metrics.cost_micros > 0
+          ? (row.metrics.cost_micros / row.metrics.impressions) * 1000 / 1e6
+          : 0,
       },
     })) || [];
 
