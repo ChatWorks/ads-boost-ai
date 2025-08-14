@@ -8,6 +8,8 @@ import Layout from "@/components/Layout";
 import ChatDashboard from "./pages/ChatDashboard";
 import InsightsDashboard from "./pages/InsightsDashboard";
 import InsightEmailSettings from "./pages/InsightEmailSettings";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 import Data from "./pages/Data";
 import Campaigns from "./pages/Campaigns";
@@ -129,6 +131,14 @@ const App = () => (
                   <Settings />
                 </ProtectedRoute>
               } 
+            />
+            <Route 
+              path="/privacy" 
+              element={<PrivacyPolicy />} 
+            />
+            <Route 
+              path="/terms" 
+              element={<TermsOfService />} 
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
