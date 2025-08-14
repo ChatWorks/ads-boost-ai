@@ -53,6 +53,8 @@ async function getRefreshedToken(refreshToken: string, accountId: string) {
 }
 
 async function fetchCampaignData(accountId: string, accessToken: string, date: string) {
+  console.log(`🔍 Fetching campaign data for customer ID: ${accountId}, date: ${date}`);
+  
   const query = `
     SELECT
       campaign.id,
@@ -76,24 +78,32 @@ async function fetchCampaignData(accountId: string, accessToken: string, date: s
     AND campaign.status != 'REMOVED'
   `;
 
-  const response = await fetch(
-    `https://googleads.googleapis.com/v16/customers/${accountId}/googleAds:searchStream`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN') || '',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query }),
-    }
-  );
+  const url = `https://googleads.googleapis.com/v16/customers/${accountId}/googleAds:searchStream`;
+  console.log(`📡 Making API request to: ${url}`);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN') || '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query }),
+  });
 
   if (!response.ok) {
-    throw new Error(`Google Ads API error: ${response.statusText}`);
+    const errorBody = await response.text();
+    console.error(`❌ Google Ads API Error:`);
+    console.error(`Status: ${response.status} ${response.statusText}`);
+    console.error(`Customer ID: ${accountId}`);
+    console.error(`URL: ${url}`);
+    console.error(`Error Response:`, errorBody);
+    
+    throw new Error(`Google Ads API error: ${response.status} ${response.statusText} - ${errorBody}`);
   }
 
   const data = await response.json();
+  console.log(`✅ Successfully fetched data for customer ${accountId}:`, data?.length || 0, 'results');
   return data;
 }
 
