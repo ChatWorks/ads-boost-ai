@@ -15,6 +15,17 @@ async function getRefreshedToken(refreshToken: string, accountId: string, supaba
   console.log('🔐 Attempting to refresh token...');
   const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
   const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
+  
+  console.log('🔍 Secret validation:');
+  console.log(`  - Client ID available: ${!!clientId} (length: ${clientId?.length || 0})`);
+  console.log(`  - Client Secret available: ${!!clientSecret} (length: ${clientSecret?.length || 0})`);
+  
+  if (!clientId) {
+    throw new Error('GOOGLE_ADS_CLIENT_ID is missing or empty');
+  }
+  if (!clientSecret) {
+    throw new Error('GOOGLE_ADS_CLIENT_SECRET is missing or empty');
+  }
 
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
