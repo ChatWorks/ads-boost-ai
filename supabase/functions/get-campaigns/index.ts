@@ -49,6 +49,7 @@ async function getRefreshedToken(refreshToken: string, accountId: string, supaba
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
+    console.log('🚀 get-campaigns function called (v2)');
     const { accountId, filters, useCache = true } = await req.json();
     if (!accountId) throw new Error('Account ID is required');
 

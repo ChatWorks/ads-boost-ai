@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🚀 get-keywords called');
+    console.log('🚀 get-keywords function called (v2)');
     const { accountId, filters } = await req.json();
     if (!accountId) throw new Error('Account ID is required');
 
