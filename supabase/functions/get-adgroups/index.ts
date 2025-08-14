@@ -13,6 +13,10 @@ async function getRefreshedToken(
   const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
   const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
   
+  console.log('🔍 Environment variables check:');
+  console.log('All env vars:', Object.keys(Deno.env.toObject()).filter(k => k.includes('GOOGLE')));
+  console.log('Available GOOGLE_ADS vars:', Object.keys(Deno.env.toObject()).filter(k => k.startsWith('GOOGLE_ADS')));
+  
   console.log('🔍 Secret validation:');
   console.log(`  - Client ID available: ${!!clientId} (length: ${clientId?.length || 0})`);
   console.log(`  - Client Secret available: ${!!clientSecret} (length: ${clientSecret?.length || 0})`);
