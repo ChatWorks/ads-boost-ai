@@ -16,21 +16,37 @@ interface SyncOptions {
 }
 
 async function getRefreshedToken(refreshToken: string, accountId: string) {
+  console.log('🔐 Attempting to refresh token for account:', accountId);
+  const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
+  const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
+  
+  console.log('🔧 OAuth Configuration:');
+  console.log('Client ID present:', !!clientId);
+  console.log('Client Secret present:', !!clientSecret);
+  console.log('Refresh token present:', !!refreshToken);
+  console.log('Refresh token length:', refreshToken?.length || 0);
+
   const tokenRequest = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: Deno.env.get('GOOGLE_ADS_CLIENT_ID') || '',
-      client_secret: Deno.env.get('GOOGLE_ADS_CLIENT_SECRET') || '',
+      client_id: clientId || '',
+      client_secret: clientSecret || '',
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
   });
 
   if (!tokenRequest.ok) {
-    throw new Error(`Token refresh failed: ${tokenRequest.statusText}`);
+    const errorText = await tokenRequest.text();
+    console.error('❌ Token refresh failed:');
+    console.error('Status:', tokenRequest.status);
+    console.error('Status Text:', tokenRequest.statusText);
+    console.error('Error Response:', errorText);
+    throw new Error(`Token refresh failed: ${tokenRequest.status} - ${errorText}`);
   }
 
+  console.log('✅ Token refresh successful');
   return await tokenRequest.json();
 }
 
