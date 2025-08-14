@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -194,6 +194,85 @@ export type Database = {
           },
         ]
       }
+      google_ads_metrics_cache: {
+        Row: {
+          account_id: string | null
+          cache_key: string
+          created_at: string | null
+          data: Json
+          expires_at: string
+          id: string
+          query_hash: string
+        }
+        Insert: {
+          account_id?: string | null
+          cache_key: string
+          created_at?: string | null
+          data: Json
+          expires_at: string
+          id?: string
+          query_hash: string
+        }
+        Update: {
+          account_id?: string | null
+          cache_key?: string
+          created_at?: string | null
+          data?: Json
+          expires_at?: string
+          id?: string
+          query_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_ads_metrics_cache_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "google_ads_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_ads_metrics_daily: {
+        Row: {
+          account_id: string | null
+          created_at: string | null
+          date: string
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          metrics: Json
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string | null
+          date: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          metrics: Json
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string | null
+          date?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          metrics?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_ads_metrics_daily_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "google_ads_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insights_email_logs: {
         Row: {
           created_at: string
@@ -341,19 +420,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_old_conversations: {
-        Args: { target_user_id?: string; keep_count?: number }
+        Args: { keep_count?: number; target_user_id?: string }
         Returns: number
       }
       get_conversation_context: {
         Args: { conversation_uuid: string; message_limit?: number }
         Returns: {
-          message_id: string
-          role: string
           content: string
-          metadata: Json
           context_data: Json
           created_at: string
+          message_id: string
+          metadata: Json
+          role: string
           sequence_number: number
         }[]
       }
