@@ -10,16 +10,37 @@ async function getRefreshedToken(
   supabaseAdmin: any
 ) {
   console.log('🔐 Attempting to refresh token...');
+  
+  // Extra debugging voor environment variables
+  console.log('🔍 Full environment check:');
+  const allEnvKeys = Object.keys(Deno.env.toObject());
+  console.log('Total env vars count:', allEnvKeys.length);
+  console.log('All Google-related vars:', allEnvKeys.filter(k => k.toLowerCase().includes('google')));
+  console.log('All GOOGLE_ADS vars:', allEnvKeys.filter(k => k.startsWith('GOOGLE_ADS')));
+  
+  // Get values met extra debugging
   const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
   const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
+  const developerToken = Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN');
   
-  console.log('🔍 Environment variables check:');
-  console.log('All env vars:', Object.keys(Deno.env.toObject()).filter(k => k.includes('GOOGLE')));
-  console.log('Available GOOGLE_ADS vars:', Object.keys(Deno.env.toObject()).filter(k => k.startsWith('GOOGLE_ADS')));
+  console.log('🔍 Detailed secret validation:');
+  console.log(`  - Client ID: exists=${!!clientId}, length=${clientId?.length || 0}, starts_with=${clientId?.substring(0, 10)}...`);
+  console.log(`  - Client Secret: exists=${!!clientSecret}, length=${clientSecret?.length || 0}, type=${typeof clientSecret}`);
+  console.log(`  - Developer Token: exists=${!!developerToken}, length=${developerToken?.length || 0}`);
   
-  console.log('🔍 Secret validation:');
-  console.log(`  - Client ID available: ${!!clientId} (length: ${clientId?.length || 0})`);
-  console.log(`  - Client Secret available: ${!!clientSecret} (length: ${clientSecret?.length || 0})`);
+  // Check if values are just whitespace or special characters
+  if (clientSecret) {
+    console.log(`  - Client Secret trimmed length: ${clientSecret.trim().length}`);
+    console.log(`  - Client Secret first/last chars: "${clientSecret.charAt(0)}"..."${clientSecret.charAt(clientSecret.length-1)}"`);
+  }
+  
+  // Check raw environment object directly
+  const rawEnv = Deno.env.toObject();
+  console.log('🔍 Raw environment check:');
+  console.log(`  - GOOGLE_ADS_CLIENT_SECRET in raw env: ${!!rawEnv.GOOGLE_ADS_CLIENT_SECRET}`);
+  if (rawEnv.GOOGLE_ADS_CLIENT_SECRET) {
+    console.log(`  - Raw secret length: ${rawEnv.GOOGLE_ADS_CLIENT_SECRET.length}`);
+  }
   
   if (!clientId) {
     throw new Error('GOOGLE_ADS_CLIENT_ID is missing or empty');
