@@ -1,6 +1,7 @@
 // Background function to sync daily Google Ads metrics
 import { corsHeaders } from '../_shared/cors.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { decrypt } from '../_shared/encryption.ts';
 import { storeDailyMetrics } from '../shared/metricsCache.ts';
 
 const supabase = createClient(
@@ -96,7 +97,7 @@ async function syncAccountData(accountId: string, date: string) {
     }
 
     // Decrypt refresh token (using same logic as other functions)
-    const refreshToken = account.refresh_token; // Assuming it's already decrypted in storage
+    const refreshToken = await decrypt(account.refresh_token, Deno.env.get('ENCRYPTION_KEY')!);
 
     // Get fresh access token
     const { access_token } = await getRefreshedToken(refreshToken, accountId);
