@@ -25,7 +25,7 @@ export function useDataRefresh() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
-   * Smart data refresh with debouncing and deduplication
+   * Smart data refresh with hybrid caching strategy
    */
   const refreshData = useCallback(async (options: DataRefreshOptions) => {
     const { accountId, forceRefresh = false, maxAge = 5 * 60 * 1000 } = options;
@@ -61,12 +61,12 @@ export function useDataRefresh() {
     try {
       console.log('Refreshing data for account:', accountId);
 
-      // Clear existing cache to force fresh data
+      // Clear database cache for this account if force refresh
       if (forceRefresh) {
-        dataConsolidationService.clearAccountCache(accountId);
+        await dataConsolidationService.clearAccountCache(accountId);
       }
 
-      // Refresh consolidated data
+      // Refresh consolidated data (now uses database cache internally)
       const consolidatedData = await dataConsolidationService.getConsolidatedAccountData(accountId);
       
       // Prepare AI context

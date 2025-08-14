@@ -1,6 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { decrypt } from '../_shared/encryption.ts';
+import { 
+  getCachedData, 
+  setCachedData, 
+  generateCacheKey, 
+  generateQueryHash,
+  cleanupExpiredCache 
+} from '../shared/metricsCache.ts';
 
 const GOOGLE_ADS_API_VERSION = 'v20';
 
@@ -31,8 +38,41 @@ async function getRefreshedToken(refreshToken: string, accountId: string, supaba
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { accountId, filters } = await req.json();
+    const { accountId, filters, useCache = true } = await req.json();
     if (!accountId) throw new Error('Account ID is required');
+
+    // Clean up expired cache entries periodically
+    await cleanupExpiredCache();
+
+    // Generate cache key for this request
+    const dateRange = filters?.dateRange || 'LAST_30_DAYS';
+    const metrics = filters?.metrics || [];
+    const cacheKey = generateCacheKey('campaigns', dateRange, metrics);
+    const queryHash = await generateQueryHash({ accountId, filters });
+
+    // Try to get cached data first (if useCache is true)
+    if (useCache) {
+      const cachedData = await getCachedData({
+        accountId,
+        cacheKey,
+        ttlHours: 1 // 1 hour cache for campaign data
+      });
+
+      if (cachedData) {
+        console.log('Returning cached campaign data');
+        return new Response(
+          JSON.stringify({
+            ...cachedData.data,
+            cached: true,
+            cached_at: cachedData.created_at,
+            expires_at: cachedData.expires_at
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -175,9 +215,27 @@ Deno.serve(async (req) => {
       .update({ last_successful_fetch: new Date().toISOString() })
       .eq('id', accountId);
 
-    return new Response(JSON.stringify({ campaigns }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    const result = { campaigns };
+
+    // Cache the result for future requests
+    if (useCache && campaigns?.length > 0) {
+      await setCachedData(
+        { accountId, cacheKey, ttlHours: 1 },
+        result,
+        queryHash
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        ...result,
+        cached: false,
+        fetched_at: new Date().toISOString()
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -178,7 +178,7 @@ export function useAIContext(defaultAccountId?: string): AIContextHookReturn {
       lastUpdated: null,
       dataFreshness: 'unavailable'
     });
-    dataConsolidationService.clearCache();
+    // Cache is now managed by the database - no need to clear manually
   }, []);
 
   /**

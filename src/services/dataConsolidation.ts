@@ -125,9 +125,9 @@ export interface DataFilters {
 }
 
 class DataConsolidationService {
-  private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
-  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
-  private readonly EXTENDED_TTL = 30 * 60 * 1000; // 30 minutes
+  // Remove in-memory cache - now using database cache
+  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes (legacy)
+  private readonly EXTENDED_TTL = 30 * 60 * 1000; // 30 minutes (legacy)
 
   /**
    * Main method to get consolidated account data
@@ -136,12 +136,7 @@ class DataConsolidationService {
     accountId: string, 
     filters: DataFilters = {}
   ): Promise<ConsolidatedAccountData> {
-    const cacheKey = this.getCacheKey('consolidated', accountId, filters);
-    const cached = this.getFromCache(cacheKey);
-    
-    if (cached) {
-      return cached;
-    }
+    // Use database cache via Edge Functions (no local caching needed)
 
     // Fetch all data in parallel for efficiency
     const [account, campaigns, adGroups, keywords] = await Promise.all([
@@ -162,7 +157,6 @@ class DataConsolidationService {
       insights
     };
 
-    this.setCache(cacheKey, consolidatedData, this.DEFAULT_TTL);
     return consolidatedData;
   }
 
@@ -170,12 +164,7 @@ class DataConsolidationService {
    * Get account-level metrics and information
    */
   async getAccountMetrics(accountId: string): Promise<ConsolidatedAccount> {
-    const cacheKey = this.getCacheKey('account', accountId);
-    const cached = this.getFromCache(cacheKey);
-    
-    if (cached) {
-      return cached;
-    }
+    // Use database cache via Edge Functions (no local caching needed)
 
     // Get account basic info
     const { data: accountInfo, error } = await supabase
@@ -210,7 +199,6 @@ class DataConsolidationService {
       metrics
     };
 
-    this.setCache(cacheKey, consolidatedAccount, this.EXTENDED_TTL);
     return consolidatedAccount;
   }
 
@@ -218,12 +206,7 @@ class DataConsolidationService {
    * Get campaign data with performance metrics
    */
   async getCampaignData(accountId: string, filters: DataFilters): Promise<CampaignData[]> {
-    const cacheKey = this.getCacheKey('campaigns', accountId, filters);
-    const cached = this.getFromCache(cacheKey);
-    
-    if (cached) {
-      return cached;
-    }
+    // Use database cache via Edge Function (no local caching needed)
 
     try {
       const { data, error } = await supabase.functions.invoke('get-campaigns', {
@@ -264,7 +247,6 @@ class DataConsolidationService {
         cpc: campaign.metrics?.average_cpc || 0
       }));
 
-      this.setCache(cacheKey, campaigns, this.DEFAULT_TTL);
       return campaigns;
     } catch (error) {
       console.error('Error fetching campaign data:', error);
@@ -276,12 +258,7 @@ class DataConsolidationService {
    * Get ad group data with performance metrics
    */
   async getAdGroupData(accountId: string, filters: DataFilters): Promise<AdGroupData[]> {
-    const cacheKey = this.getCacheKey('adgroups', accountId, filters);
-    const cached = this.getFromCache(cacheKey);
-    
-    if (cached) {
-      return cached;
-    }
+    // Use database cache via Edge Function (no local caching needed)
 
     try {
       const { data, error } = await supabase.functions.invoke('get-adgroups', {
@@ -320,7 +297,6 @@ class DataConsolidationService {
         cpc: adGroup.metrics?.average_cpc || 0
       }));
 
-      this.setCache(cacheKey, adGroups, this.DEFAULT_TTL);
       return adGroups;
     } catch (error) {
       console.error('Error fetching ad group data:', error);
@@ -332,12 +308,7 @@ class DataConsolidationService {
    * Get keyword data with performance metrics
    */
   async getKeywordData(accountId: string, filters: DataFilters): Promise<KeywordData[]> {
-    const cacheKey = this.getCacheKey('keywords', accountId, filters);
-    const cached = this.getFromCache(cacheKey);
-    
-    if (cached) {
-      return cached;
-    }
+    // Use database cache via Edge Function (no local caching needed)
 
     try {
       const { data, error } = await supabase.functions.invoke('get-keywords', {
@@ -377,7 +348,6 @@ class DataConsolidationService {
         cpc: keyword.metrics?.average_cpc || 0
       }));
 
-      this.setCache(cacheKey, keywords, this.DEFAULT_TTL);
       return keywords;
     } catch (error) {
       console.error('Error fetching keyword data:', error);
@@ -501,46 +471,54 @@ class DataConsolidationService {
     };
   }
 
-  // Cache management methods
-  private getCacheKey(type: string, accountId: string, filters?: DataFilters): string {
-    const filterKey = filters ? JSON.stringify(filters) : 'default';
-    return `${type}_${accountId}_${filterKey}`;
-  }
-
-  private getFromCache(key: string): any | null {
-    const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.timestamp < cached.ttl) {
-      return cached.data;
-    }
-    if (cached) {
-      this.cache.delete(key);
-    }
-    return null;
-  }
-
-  private setCache(key: string, data: any, ttl: number): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl
-    });
-  }
-
   /**
-   * Clear all cached data
+   * Get historical data for trends and comparisons
    */
-  clearCache(): void {
-    this.cache.clear();
-  }
+  private async getHistoricalData(
+    accountId: string, 
+    entityType: string, 
+    days: number = 30
+  ): Promise<any[]> {
+    try {
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  /**
-   * Clear cache for specific account
-   */
-  clearAccountCache(accountId: string): void {
-    for (const key of this.cache.keys()) {
-      if (key.includes(accountId)) {
-        this.cache.delete(key);
+      const { data, error } = await supabase
+        .from('google_ads_metrics_daily')
+        .select('date, entity_id, entity_name, metrics')
+        .eq('account_id', accountId)
+        .eq('entity_type', entityType)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching historical data:', error);
+        return [];
       }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getHistoricalData:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Clear cached data for specific account (now in database)
+   */
+  async clearAccountCache(accountId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('google_ads_metrics_cache')
+        .delete()
+        .eq('account_id', accountId);
+
+      if (error) {
+        console.error('Error clearing account cache:', error);
+      }
+    } catch (error) {
+      console.error('Error in clearAccountCache:', error);
     }
   }
 }
