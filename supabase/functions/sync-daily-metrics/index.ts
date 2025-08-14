@@ -17,23 +17,24 @@ interface SyncOptions {
 
 async function getRefreshedToken(refreshToken: string, accountId: string) {
   console.log('🔐 Attempting to refresh token for account:', accountId);
-  const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
-  const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
   
-  console.log('🔧 OAuth Configuration:');
-  console.log('Client ID present:', !!clientId);
-  console.log('Client ID value:', clientId ? `${clientId.substring(0, 10)}...` : 'MISSING');
-  console.log('Client Secret present:', !!clientSecret);
-  console.log('Client Secret value:', clientSecret ? `${clientSecret.substring(0, 10)}...` : 'MISSING');
-  console.log('Refresh token present:', !!refreshToken);
-  console.log('Refresh token length:', refreshToken?.length || 0);
+  // Use consistent secret handling like other functions
+  const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID')!;
+  const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET')!;
+  
+  // Validate required secrets are present
+  if (!clientId || !clientSecret) {
+    throw new Error(`Missing required secrets - Client ID: ${!!clientId}, Client Secret: ${!!clientSecret}`);
+  }
+  
+  console.log('🔧 OAuth Configuration validated - all secrets present');
 
   const tokenRequest = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: clientId || '',
-      client_secret: clientSecret || '',
+      client_id: clientId,
+      client_secret: clientSecret,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
