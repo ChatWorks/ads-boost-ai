@@ -11,7 +11,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    vercel(),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
