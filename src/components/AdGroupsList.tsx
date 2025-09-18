@@ -35,13 +35,8 @@ const AdGroupsList: React.FC<AdGroupsListProps> = ({ accountId, filters }) => {
     setError(null);
     
     try {
-      const { data, error: functionError } = await supabase.functions.invoke('get-adgroups', {
-        body: { accountId, filters }
-      });
-
-      if (functionError) {
-        throw functionError;
-      }
+      const { googleAdsService } = await import('@/services/api');
+      const data = await googleAdsService.getAdGroups(accountId, filters);
 
       if (data.error) {
         throw new Error(data.error);

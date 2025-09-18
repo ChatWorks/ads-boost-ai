@@ -124,20 +124,19 @@ export default function GoogleAdsAccountSelection({ onSelectionComplete }: Googl
 
   const handleReconnect = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('google-ads-connect');
-      
-      if (error) throw error;
+      const { googleAdsService } = await import('@/services/api');
+      const data = await googleAdsService.connect();
       
       if (data?.authUrl) {
         window.location.href = data.authUrl;
       } else {
         throw new Error('No authorization URL received');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error initiating reconnection:', error);
       toast({
         title: "Error",
-        description: "Failed to start reconnection process",
+        description: error.message || "Failed to start reconnection process",
         variant: "destructive",
       });
     }

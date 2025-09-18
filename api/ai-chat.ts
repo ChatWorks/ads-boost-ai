@@ -1,16 +1,9 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-// Initialize Supabase client
 const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 interface ChatMessage {
@@ -35,27 +28,33 @@ interface AccountContext {
   natural_language: any;
 }
 
-serve(async (req) => {
-  // Handle CORS preflight requests
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const openaiApiKey = process.env.OPENAI_API_KEY;
     if (!openaiApiKey) {
       throw new Error('OPENAI_API_KEY is not set');
     }
 
     // Parse request
-    const { message, conversation_id, account_id, stream = true }: ChatRequest = await req.json();
+    const { message, conversation_id, account_id, stream = false }: ChatRequest = req.body;
     
     if (!message?.trim()) {
       throw new Error('Message is required');
     }
 
     // Get user from JWT
-    const authHeader = req.headers.get('authorization');
+    const authHeader = req.headers.authorization;
     if (!authHeader) {
       throw new Error('Authorization header is required');
     }
@@ -67,8 +66,8 @@ serve(async (req) => {
       throw new Error('Invalid authentication');
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
     const supabaseUser = createClient(
       supabaseUrl,
       supabaseAnonKey,
@@ -105,27 +104,28 @@ serve(async (req) => {
         .maybeSingle();
 
       if (accErr || !acc) {
-        return new Response(JSON.stringify({
+        return res.status(403).json({
           error: 'Account not found or not accessible',
           code: 'account_access_denied'
-        }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        });
       }
       if (acc.connection_status !== 'CONNECTED') {
-        return new Response(JSON.stringify({
+        return res.status(400).json({
           error: 'Account is not connected',
           code: 'account_not_connected'
-        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        });
       }
 
       console.log('Account resolved with customer_id', acc.customer_id);
     } else {
-      return new Response(JSON.stringify({
+      return res.status(400).json({
         error: 'No account specified and no default account selected',
         code: 'missing_account_id'
-      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      });
     }
 
     console.log('Processing chat request for user:', user.id);
+    
     // Get or create conversation
     let currentConversationId = conversation_id;
     if (!currentConversationId) {
@@ -177,18 +177,24 @@ serve(async (req) => {
     let accountContext: AccountContext | null = null;
     if (account_id) {
       try {
-        // Create a user-scoped client so RLS and auth apply inside the invoked function
-        // supabaseUser client initialized above with user JWT; reusing it here.
+        // Call our account context endpoint
+        const contextResponse = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/google-ads/account-context`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            account_id: resolvedAccountId, 
+            user_query: message, 
+            debug: 'full' 
+          })
+        });
 
-        const { data: contextData, error: contextError } = await supabaseUser.functions.invoke(
-          'get-account-context',
-          { body: { account_id: resolvedAccountId, user_query: message, debug: 'full' } }
-        );
-
-        if (contextError) {
-          console.warn('get-account-context error:', contextError);
-        } else if (contextData) {
-          accountContext = contextData as AccountContext;
+        if (contextResponse.ok) {
+          accountContext = await contextResponse.json();
+        } else {
+          console.warn('get-account-context error:', contextResponse.status);
         }
       } catch (error) {
         console.warn('Could not fetch account context:', error);
@@ -231,7 +237,7 @@ serve(async (req) => {
 
     if (stream) {
       // Handle streaming response
-      return handleStreamingResponse(openaiResponse, currentConversationId, user.id, accountContext);
+      return handleStreamingResponse(openaiResponse, currentConversationId, user.id, accountContext, res);
     } else {
       // Handle non-streaming response
       const responseData = await openaiResponse.json();
@@ -240,26 +246,26 @@ serve(async (req) => {
       // Save assistant response to database
       await saveAssistantMessage(currentConversationId, user.id, assistantMessage, responseData.usage, accountContext);
 
-      return new Response(JSON.stringify({
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+      
+      return res.status(200).json({
         message: assistantMessage,
         conversation_id: currentConversationId,
         usage: responseData.usage
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in ai-chat function:', error);
-    return new Response(JSON.stringify({ 
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+    return res.status(500).json({ 
       error: error.message || 'Internal server error',
       type: 'ai_chat_error'
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}
 
 function buildSystemPrompt(user: any, accountContext: AccountContext | null): string {
   const userName = user.user_metadata?.full_name || 'there';
@@ -376,8 +382,9 @@ async function handleStreamingResponse(
   openaiResponse: Response, 
   conversationId: string, 
   userId: string,
-  accountContext: AccountContext | null
-): Promise<Response> {
+  accountContext: AccountContext | null,
+  res: VercelResponse
+): Promise<VercelResponse> {
   const stream = new ReadableStream({
     async start(controller) {
       const reader = openaiResponse.body?.getReader();
@@ -437,14 +444,20 @@ async function handleStreamingResponse(
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  return new Response(stream).body?.pipeTo(new WritableStream({
+    write(chunk) {
+      res.write(chunk);
     },
-  });
+    close() {
+      res.end();
+    }
+  })) as any;
 }
 
 async function saveAssistantMessage(

@@ -36,7 +36,7 @@ export default function Auth() {
     if (!signInEmail || !signInPassword) {
       toast({
         title: "Error",
-        description: "Please fill in all fields.",
+        description: "Vul alle velden in.",
         variant: "destructive",
       });
       return;
@@ -47,8 +47,8 @@ export default function Auth() {
     
     if (error) {
       toast({
-        title: "Sign in failed",
-        description: error.message || "Invalid email or password.",
+        title: "Log in mislukt",
+        description: error.message || "Ongeldige e-mail of wachtwoord.",
         variant: "destructive",
       });
     }
@@ -60,7 +60,7 @@ export default function Auth() {
     if (!signUpEmail || !signUpPassword || !signUpFullName) {
       toast({
         title: "Error",
-        description: "Please fill in all fields.",
+        description: "Vul alle velden in.",
         variant: "destructive",
       });
       return;
@@ -69,7 +69,7 @@ export default function Auth() {
     if (signUpPassword.length < 6) {
       toast({
         title: "Error",
-        description: "Password must be at least 6 characters long.",
+          description: "Wachtwoord moet minimaal 6 karakters lang zijn.",
         variant: "destructive",
       });
       return;
@@ -79,16 +79,16 @@ export default function Auth() {
     const { error } = await signUp(signUpEmail, signUpPassword, signUpFullName);
     
     if (error) {
-      let errorMessage = "Failed to create account.";
+      let errorMessage = "Mislukt om een account te maken.";
       
       if (error.message?.includes("already registered")) {
-        errorMessage = "This email is already registered. Please sign in instead.";
+        errorMessage = "Deze e-mail is al geregistreerd. Log in in plaats daarvan.";
       } else if (error.message) {
         errorMessage = error.message;
       }
       
       toast({
-        title: "Sign up failed",
+        title: "Registreren mislukt",
         description: errorMessage,
         variant: "destructive",
       });
@@ -108,22 +108,22 @@ export default function Auth() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gradient mb-2">Innogo</h1>
-          <p className="text-muted-foreground">Your AI-powered Google Ads assistant</p>
+          <h1 className="text-3xl font-bold mb-2 text-black">Innomads</h1>
+          <p className="text-muted-foreground">AI Google Ads Agent</p>
         </div>
 
         <Card className="professional-card">
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="signin">Log in</TabsTrigger>
+              <TabsTrigger value="signup">Registreren</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin">
               <CardHeader>
-                <CardTitle>Welcome back</CardTitle>
+                <CardTitle>Welkom terug</CardTitle>
                 <CardDescription>
-                  Sign in to your Innogo account to manage your Google Ads campaigns.
+                  Log in om je Google Ads campagnes te beheren.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -133,7 +133,7 @@ export default function Auth() {
                     <Input
                       id="signin-email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder="Vul je e-mail in"
                       value={signInEmail}
                       onChange={(e) => setSignInEmail(e.target.value)}
                       disabled={isSubmitting}
@@ -141,12 +141,12 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
+                    <Label htmlFor="signin-password">Wachtwoord</Label>
                     <div className="relative">
                       <Input
                         id="signin-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Enter your password"
+                        placeholder="Vul je wachtwoord in"
                         value={signInPassword}
                         onChange={(e) => setSignInPassword(e.target.value)}
                         disabled={isSubmitting}
@@ -171,7 +171,7 @@ export default function Auth() {
                     {isSubmitting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
-                    Sign In
+                    Log in
                   </Button>
                 </form>
               </CardContent>
@@ -179,19 +179,16 @@ export default function Auth() {
             
             <TabsContent value="signup">
               <CardHeader>
-                <CardTitle>Create account</CardTitle>
-                <CardDescription>
-                  Get started with Innogo to optimize your Google Ads campaigns with AI.
-                </CardDescription>
+                <CardTitle>Maak een account</CardTitle> 
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
+                    <Label htmlFor="signup-name">Volledige naam</Label>
                     <Input
                       id="signup-name"
                       type="text"
-                      placeholder="Enter your full name"
+                      placeholder="Vul je volledige naam in"
                       value={signUpFullName}
                       onChange={(e) => setSignUpFullName(e.target.value)}
                       disabled={isSubmitting}
@@ -199,11 +196,11 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">E-mail</Label>
                     <Input
                       id="signup-email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder="Vul je e-mail in"
                       value={signUpEmail}
                       onChange={(e) => setSignUpEmail(e.target.value)}
                       disabled={isSubmitting}
@@ -211,12 +208,12 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label htmlFor="signup-password">Wachtwoord</Label>
                     <div className="relative">
                       <Input
                         id="signup-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Create a password (min. 6 characters)"
+                        placeholder="Maak een wachtwoord (min. 6 karakters)"
                         value={signUpPassword}
                         onChange={(e) => setSignUpPassword(e.target.value)}
                         disabled={isSubmitting}
@@ -242,7 +239,7 @@ export default function Auth() {
                     {isSubmitting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
-                    Create Account
+                    Maak een account
                   </Button>
                 </form>
               </CardContent>
@@ -251,7 +248,7 @@ export default function Auth() {
         </Card>
         
         <p className="text-center text-sm text-muted-foreground mt-6">
-          By signing up, you agree to our terms of service and privacy policy.
+          Door je account te maken, ga je akkoord met onze servicevoorwaarden en privacybeleid.
         </p>
       </div>
     </div>

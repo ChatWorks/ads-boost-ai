@@ -44,13 +44,8 @@ const KeywordsList: React.FC<KeywordsListProps> = ({ accountId, filters }) => {
     setError(null);
     
     try {
-      const { data, error: functionError } = await supabase.functions.invoke('get-keywords', {
-        body: { accountId, filters }
-      });
-
-      if (functionError) {
-        throw functionError;
-      }
+      const { googleAdsService } = await import('@/services/api');
+      const data = await googleAdsService.getKeywords(accountId, filters);
 
       if (data.error) {
         throw new Error(data.error);

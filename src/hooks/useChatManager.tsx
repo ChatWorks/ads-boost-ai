@@ -179,19 +179,14 @@ export function useChatManager(accountId?: string) {
     abortControllerRef.current = new AbortController();
 
     try {
-      // Call AI chat via Supabase client (handles auth and CORS)
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: {
-          message: message.trim(),
-          conversation_id: state.currentConversation?.id,
-          account_id: accountId,
-          stream: false
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'AI chat failed');
-      }
+      // Call AI chat via Vercel API
+      const { aiChatService } = await import('@/services/api');
+      const data = await aiChatService.sendMessage(
+        message.trim(),
+        state.currentConversation?.id,
+        accountId,
+        false
+      );
 
       // Non-streaming response
       if (data.message) {

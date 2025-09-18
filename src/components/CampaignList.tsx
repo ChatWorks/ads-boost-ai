@@ -35,14 +35,8 @@ export default function CampaignList({ accountId, filters: externalFilters }: Ca
       setError(null);
 
       const filtersToUse = externalFilters || filters;
-      const { data, error } = await supabase.functions.invoke('get-campaigns', {
-        body: { 
-          accountId,
-          filters: filtersToUse
-        }
-      });
-
-      if (error) throw error;
+      const { googleAdsService } = await import('@/services/api');
+      const data = await googleAdsService.getCampaigns(accountId, filtersToUse);
 
       if (data?.error) {
         throw new Error(data.error);

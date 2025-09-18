@@ -99,8 +99,10 @@ export function useAIContext(defaultAccountId?: string): AIContextHookReturn {
       }
 
       // Prepare AI context with enhanced error handling
-      const contextResult = await aiDataPreparationService.prepareAIContext(
-        targetAccountId, 
+      const { googleAdsService } = await import('@/services/api');
+      const contextResult = await googleAdsService.getAccountContext(
+        targetAccountId,
+        undefined,
         filters
       );
 
@@ -108,7 +110,12 @@ export function useAIContext(defaultAccountId?: string): AIContextHookReturn {
       const dataFreshness = calculateDataFreshness(accountData.last_successful_fetch);
 
       setState({
-        contextData: contextResult.structured_data,
+        contextData: {
+          account_summary: contextResult.account_summary,
+          performance_snapshot: contextResult.performance_snapshot,
+          insights_summary: contextResult.insights_summary,
+          actionable_recommendations: contextResult.actionable_recommendations
+        },
         naturalLanguage: contextResult.natural_language,
         isLoading: false,
         error: null,
@@ -147,10 +154,11 @@ export function useAIContext(defaultAccountId?: string): AIContextHookReturn {
 
     try {
       // Get fresh context with query-specific data
-      const contextResult = await aiDataPreparationService.prepareAIContext(
-        targetAccountId, 
-        {},
-        query
+      const { googleAdsService } = await import('@/services/api');
+      const contextResult = await googleAdsService.getAccountContext(
+        targetAccountId,
+        query,
+        {}
       );
 
       return {

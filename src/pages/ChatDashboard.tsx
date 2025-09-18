@@ -22,11 +22,11 @@ import {
 import ChatMessage from '@/components/Chat/ChatMessage';
 import ChatInput from '@/components/Chat/ChatInput';
 
-interface QuickAction {
-  label: string;
-  icon: any;
-  action: string;
-}
+// interface QuickAction {
+//   label: string;
+//   icon: any;
+//   action: string;
+// }
 
 export default function ChatDashboard() {
   const { user } = useAuth();
@@ -198,7 +198,7 @@ export default function ChatDashboard() {
           <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4 mx-auto">
             <Loader2 className="h-6 w-6 text-primary-foreground animate-spin" />
           </div>
-          <p className="text-muted-foreground">Initializing Tara Chat...</p>
+          <p className="text-muted-foreground">Initializing Joost Chat...</p>
           <p className="text-xs text-muted-foreground/60 mt-2">
             {contextLoading ? 'Loading account data...' : 'Setting up interface...'}
           </p>
@@ -209,7 +209,7 @@ export default function ChatDashboard() {
 
   return (
     <ChatErrorBoundary>
-    <div className="h-screen flex bg-background">
+    <div className="h-full flex bg-background">
       {/* Left Sidebar - Recent Chats */}
       <div className="w-60 bg-sidebar border-r border-sidebar-border flex flex-col">
         {/* Header */}
@@ -218,7 +218,7 @@ export default function ChatDashboard() {
             <div className="w-6 h-6 bg-foreground rounded-sm flex items-center justify-center">
               <span className="text-background font-bold text-xs">T</span>
             </div>
-            <span className="font-semibold text-sidebar-foreground">Tara AI</span>
+            <span className="font-semibold text-sidebar-foreground">Joost AI</span>
           </div>
           <Button 
             variant="default" 
@@ -291,7 +291,7 @@ export default function ChatDashboard() {
         <div className="p-6 border-b border-border bg-background">
           <div className="max-w-3xl mx-auto">
             <h1 className="text-2xl font-medium text-center mb-2">
-              Ask Tara
+              Ask Joost
             </h1>
             <p className="text-muted-foreground text-center text-sm">
               Your AI Google Ads Assistant
@@ -442,7 +442,7 @@ export default function ChatDashboard() {
                     <div className="max-w-2xl mr-16">
                       <div className="rounded-2xl px-4 py-3 text-sm bg-muted text-foreground">
                         <div className="flex items-center gap-2">
-                          <div className="animate-pulse">Tara is typing...</div>
+                          <div className="animate-pulse">Joost is typing...</div>
                           <div className="flex gap-1">
                             <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                             <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -463,11 +463,11 @@ export default function ChatDashboard() {
           <div className="max-w-3xl mx-auto p-6">
             <ChatInput 
               onSendMessage={handleSendMessage}
-              placeholder="Ask Tara a question..."
+              placeholder="Ask Joost a question..."
               disabled={isStreaming}
             />
             <p className="text-xs text-muted-foreground mt-3 text-center">
-              Tara can make mistakes
+              Joost can make mistakes
             </p>
             <div className="flex justify-center mt-3 text-xs text-muted-foreground">
               <span>Need help setting up your prompt? </span>

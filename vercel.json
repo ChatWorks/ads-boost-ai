@@ -1,0 +1,43 @@
+{
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "GOOGLE_ADS_CLIENT_ID": "@google-ads-client-id",
+    "GOOGLE_ADS_CLIENT_SECRET": "@google-ads-client-secret",
+    "GOOGLE_ADS_DEVELOPER_TOKEN": "@google-ads-developer-token",
+    "SUPABASE_URL": "@supabase-url",
+    "SUPABASE_ANON_KEY": "@supabase-anon-key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase-service-role-key",
+    "OPENAI_API_KEY": "@openai-api-key",
+    "ENCRYPTION_KEY": "@encryption-key"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "authorization, x-client-info, apikey, content-type"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/google-ads/callback",
+      "destination": "/api/google-ads/callback.ts"
+    }
+  ]
+}
