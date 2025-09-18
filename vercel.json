@@ -1,8 +1,7 @@
 {
   "functions": {
     "api/**/*.ts": {
-      "runtime": "nodejs18.x",
-      "maxDuration": 30
+      "maxDuration": 300
     }
   },
   "headers": [
@@ -22,12 +21,6 @@
           "value": "authorization, x-client-info, apikey, content-type"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/google-ads/callback",
-      "destination": "/api/google-ads/callback.ts"
     }
   ]
 }
